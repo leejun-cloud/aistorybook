@@ -1,0 +1,108 @@
+{
+  "ranAt": "2026-08-31T15:28:27.726Z",
+  "projectId": "book-scenetest",
+  "imageCalls": 3,
+  "visionCalls": 2,
+  "consistency": {
+    "scene-3-cand-1.png": {
+      "passed": false,
+      "score": 92,
+      "summary": "캐릭터는 대부분의 DNA를 잘 유지하고 있지만, 앞발의 자세와 금지된 멜빵바지 및 배낭 착용으로 인해 중요한 위반 사항이 발견되었습니다.",
+      "violations": [
+        "fixed: F11: Typical standing posture: When standing on two feet, the character holds its front paws together in front of its chest/belly. — 두 발로 서 있을 때 앞발을 가슴/배 앞에 모으고 있지 않고, 한쪽 발은 옆에, 다른 한쪽 발은 가방 끈을 잡고 있습니다.",
+        "forbidden: X8: Outfits, clothing, hats, bows, jewelry, or any other accessories. — 냄비 모자는 장면 텍스트에 따라 허용되지만, 캐릭터가 멜빵바지와 빨간 배낭을 착용하고 있어 의류 및 액세서리 금지 조항을 위반합니다."
+      ]
+    },
+    "scene-3-cand-0.png": {
+      "passed": true,
+      "score": 100,
+      "summary": "모든 캐릭터 DNA 항목이 올바르게 유지되어 해당 이미지에는 위반 사항이 없습니다.",
+      "violations": []
+    }
+  },
+  "slotEdit": {
+    "sceneNumber": 2,
+    "transform": {
+      "scale": 1.3,
+      "offsetX": 0.1,
+      "offsetY": 0
+    }
+  },
+  "coverGeneration": {
+    "generated": [
+      {
+        "concept": "character",
+        "url": "/api/character/asset?projectId=book-scenetest&name=cover-character.png"
+      },
+      {
+        "concept": "scene",
+        "url": "/api/character/asset?projectId=book-scenetest&name=cover-scene.png"
+      },
+      {
+        "concept": "symbol",
+        "url": "/api/character/asset?projectId=book-scenetest&name=cover-symbol.png"
+      }
+    ],
+    "failures": 0
+  },
+  "selectedCover": "cover-character",
+  "spine": {
+    "spineMm": 3,
+    "rawMm": 2.84,
+    "canFitSpineText": false,
+    "warnings": [
+      "책등 폭 3mm < 5mm — 책등 제목 인쇄가 어려워 책등 텍스트를 자동 생략합니다."
+    ]
+  },
+  "wrapCover": {
+    "trimWidth": 367,
+    "trimHeight": 257,
+    "pageWidth": 373,
+    "pageHeight": 263,
+    "spineMm": 3,
+    "spineTextIncluded": false,
+    "warnings": [
+      "책등 폭 3mm < 5mm — 책등 제목 인쇄가 어려워 책등 텍스트를 자동 생략합니다."
+    ]
+  },
+  "bodyPdfs": {
+    "view": "/Users/ichangjun/Documents/GitHub/test/aistorybook/tests/publish/output/book-view.pdf",
+    "print": "/Users/ichangjun/Documents/GitHub/test/aistorybook/tests/publish/output/book-print.pdf"
+  },
+  "preflight": {
+    "ranAt": "2026-08-31T15:29:41.279Z",
+    "passed": true,
+    "items": [
+      {
+        "label": "페이지 누락·순서",
+        "passed": true,
+        "detail": "3페이지, 순번 연속·중복 없음"
+      },
+      {
+        "label": "글 넘침",
+        "passed": true,
+        "detail": "모든 텍스트 슬롯 안에 수납됨 (렌더 실측)"
+      },
+      {
+        "label": "안전영역 침범",
+        "passed": true,
+        "detail": "WARN: p1 글 슬롯이 권장 여백(20mm) 안쪽 — 오버레이 템플릿이면 허용 / p2 글 슬롯이 권장 여백(20mm) 안쪽 — 오버레이 템플릿이면 허용 / p3 글 슬롯이 권장 여백(20mm) 안쪽 — 오버레이 템플릿이면 허용"
+      },
+      {
+        "label": "이미지 실해상도 (300dpi)",
+        "passed": true,
+        "detail": "WARN: p1 1024px → 약 124dpi (기준 300dpi 미달) — 업스케일 권고 / p2 1024px → 약 147dpi (기준 300dpi 미달) — 업스케일 권고 / p3 1024px → 약 124dpi (기준 300dpi 미달) — 업스케일 권고"
+      },
+      {
+        "label": "폰트 임베드",
+        "passed": true,
+        "detail": "Pretendard Regular/Bold 로컬 임베드"
+      },
+      {
+        "label": "판형 대응 (부크크2 B5 (46배판))",
+        "passed": true,
+        "detail": "WARN: 본문은 210×210 정사각, 프로파일은 182×257 — 정사각 판형은 부크크·교보 표준 프리셋에 없음 (print-profiles.md §2). 입점 전 판형 확정 필요"
+      }
+    ]
+  }
+}

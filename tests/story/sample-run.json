@@ -1,0 +1,366 @@
+{
+  "ranAt": "2026-08-31T14:52:55.975Z",
+  "input": {
+    "idea": "겁 많은 아기 토끼가 폭풍 속에서 친구를 구하는 이야기",
+    "targetAge": "6~8세",
+    "sceneCount": 12,
+    "desiredMood": "조마조마하다가 뭉클하게",
+    "patternIds": [
+      "courage"
+    ]
+  },
+  "draftScenes": [
+    {
+      "sceneNumber": 1,
+      "beat": "두려움의 실감",
+      "text": "우르르 쾅쾅! 하늘이 무겁게 내려앉자 코리의 귀가 바닥까지 축 처졌어요. 이불 속으로 쏙, 발끝까지 숨겼지만 심장 소리는 쿵쾅쿵쾅 더 크게 들려요.",
+      "textSource": "ai",
+      "characters": [
+        "rabbit_kori"
+      ],
+      "location": "코리의 집 침대 위",
+      "emotion": "공포",
+      "visualFocus": "이불 밖으로 살짝 튀어나온 코리의 떨리는 발가락과 긴 귀",
+      "preferredTextArea": "upper-right"
+    },
+    {
+      "sceneNumber": 2,
+      "beat": "회피의 기술(웃음)",
+      "text": "코리는 비 오는 날이면 '천하무적 냄비 모자'를 써요. \"이렇게 하면 구름도 나를 못 찾겠지?\" 식탁 밑에 숨어 당근을 오독오독 씹으며 혼잣말을 했어요.",
+      "textSource": "ai",
+      "characters": [
+        "rabbit_kori"
+      ],
+      "location": "주방 식탁 밑",
+      "emotion": "안도",
+      "visualFocus": "머리에 커다란 냄비를 뒤집어쓰고 당근을 쥐고 있는 코리",
+      "preferredTextArea": "lower-center"
+    },
+    {
+      "sceneNumber": 3,
+      "beat": "회피의 그늘",
+      "text": "창문 너머로 친구들이 물웅덩이에서 첨벙거리는 소리가 들려요. 코리는 냄비 모자 밑으로 눈만 빼꼼 내밀고는 조용히 긴 한숨을 내쉬었지요.",
+      "textSource": "ai",
+      "characters": [
+        "rabbit_kori"
+      ],
+      "location": "창가 주변",
+      "emotion": "씁쓸함",
+      "visualFocus": "창문에 맺힌 빗방울과 그 너머로 보이는 즐거운 친구들의 실루엣",
+      "preferredTextArea": "upper-left"
+    },
+    {
+      "sceneNumber": 4,
+      "beat": "소중한 존재와의 일상",
+      "text": "어제는 밤비와 숲길을 걸으며 산딸기를 한 바구니 땄어요. 밤비가 코리의 귀에 속삭였죠. \"내일은 저 너머 개울가로 보랏빛 꽃을 찾으러 가자!\"",
+      "textSource": "ai",
+      "characters": [
+        "rabbit_kori",
+        "squirrel_bambi"
+      ],
+      "location": "햇살 비치는 숲길",
+      "emotion": "다정함",
+      "visualFocus": "붉은 산딸기가 가득 담긴 바구니와 마주 보며 웃는 두 친구",
+      "preferredTextArea": "lower-right"
+    },
+    {
+      "sceneNumber": 5,
+      "beat": "계기 — 소중한 존재가 위험에",
+      "text": "갑자기 쏟아지는 장대비에 개울물이 무섭게 불어났어요. 개울 건너편, 빗물에 젖은 밤비가 가느다란 나무뿌리를 붙잡고 위태롭게 매달려 있어요.",
+      "textSource": "ai",
+      "characters": [
+        "squirrel_bambi"
+      ],
+      "location": "성난 개울가",
+      "emotion": "경악",
+      "visualFocus": "휘몰아치는 흙탕물과 나무뿌리를 놓치지 않으려 버티는 밤비의 작은 손",
+      "preferredTextArea": "upper-center"
+    },
+    {
+      "sceneNumber": 6,
+      "beat": "도움을 찾지만 실패",
+      "text": "코리는 곰 아저씨네 집으로 달려갔지만 문은 굳게 잠겨 있었어요. \"누구 없어요? 도와주세요!\" 외쳐보아도 비바람 소리에 목소리가 흩어져 버려요.",
+      "textSource": "ai",
+      "characters": [
+        "rabbit_kori"
+      ],
+      "location": "곰 아저씨의 나무 집 앞",
+      "emotion": "절망",
+      "visualFocus": "굳게 닫힌 커다란 문 앞에서 비를 맞으며 서 있는 작은 코리",
+      "preferredTextArea": "center-left"
+    },
+    {
+      "sceneNumber": 7,
+      "beat": "갈등 — 나뿐이다",
+      "text": "돌아오는 길, 코리의 다리가 후들후들 떨렸어요. 어른들도 없고, 비는 더 거세지는데 밤비의 목소리는 점점 작아지고 있었지요.",
+      "textSource": "ai",
+      "characters": [
+        "rabbit_kori"
+      ],
+      "location": "개울로 가는 숲길",
+      "emotion": "두려움과 결심",
+      "visualFocus": "진흙탕에 박힌 코리의 발과 주먹을 꽉 쥔 모습",
+      "preferredTextArea": "lower-left"
+    },
+    {
+      "sceneNumber": 8,
+      "beat": "출발 — 두려움을 향해",
+      "text": "코리는 냄비 모자를 벗어 던졌어요. 빗줄기가 뺨을 때리고 천둥소리가 귀를 때렸지만, 코리는 흙탕물을 박차며 개울을 향해 달렸어요.",
+      "textSource": "ai",
+      "characters": [
+        "rabbit_kori"
+      ],
+      "location": "비바람이 몰아치는 숲",
+      "emotion": "비장함",
+      "visualFocus": "바닥에 떨어진 냄비 모자와 앞을 향해 달려나가는 코리의 뒷모습",
+      "preferredTextArea": "center-right"
+    },
+    {
+      "sceneNumber": 9,
+      "beat": "문턱(숨죽임)",
+      "text": "무너질 듯 출렁이는 나무다리 앞에 코리가 멈춰 섰어요. 번쩍! 번개가 하늘을 가르자 코리는 질끈 감았던 눈을 부릅떴어요.",
+      "textSource": "ai",
+      "characters": [
+        "rabbit_kori"
+      ],
+      "location": "나무다리 앞",
+      "emotion": "긴장",
+      "visualFocus": "번개 빛에 하얗게 드러난 외나무다리와 코리의 커다란 눈동자",
+      "preferredTextArea": "upper-left"
+    },
+    {
+      "sceneNumber": 10,
+      "beat": "직면(절정)",
+      "text": "\"무서워, 너무 무서워!\" 코리는 울먹이며 한 발을 내디뎠어요. 세찬 바람이 몸을 밀어냈지만 코리는 밧줄을 꽉 쥐고 엉금엉금, 한 뼘씩 앞으로 나아갔어요.",
+      "textSource": "ai",
+      "characters": [
+        "rabbit_kori"
+      ],
+      "location": "흔들리는 나무다리 위",
+      "emotion": "용기",
+      "visualFocus": "밧줄을 꽉 쥔 코리의 젖은 앞발과 아래로 흐르는 거센 물살",
+      "preferredTextArea": "center"
+    },
+    {
+      "sceneNumber": 11,
+      "beat": "구출과 재회",
+      "text": "\"밤비야, 내 손 잡아!\" 코리가 젖은 앞발을 힘껏 뻗었어요. 두 작은 손이 꼭 맞닿은 순간, 코리는 더 이상 천둥소리가 들리지 않았어요.",
+      "textSource": "ai",
+      "characters": [
+        "rabbit_kori",
+        "squirrel_bambi"
+      ],
+      "location": "개울 건너편 바위",
+      "emotion": "안도와 환희",
+      "visualFocus": "서로의 손을 꽉 잡고 있는 토끼 발과 다람쥐 발",
+      "preferredTextArea": "lower-center"
+    },
+    {
+      "sceneNumber": 12,
+      "beat": "건너편 — 같은 두려움 앞의 달라진 주인공",
+      "text": "비는 여전히 내리고 천둥은 다시 울렸어요. 하지만 코리는 이제 냄비 속으로 숨지 않아요. 밤비의 어깨를 감싸 쥔 코리의 젖은 귀가 꼿꼿하게 서 있었지요.",
+      "textSource": "ai",
+      "characters": [
+        "rabbit_kori",
+        "squirrel_bambi"
+      ],
+      "location": "비를 맞으며 걷는 숲",
+      "emotion": "벅참",
+      "visualFocus": "나란히 걸어가는 두 친구의 뒷모습과 꼿꼿하게 세워진 코리의 귀",
+      "preferredTextArea": "upper-center"
+    }
+  ],
+  "gate": {
+    "passed": true,
+    "items": [
+      {
+        "label": "주인공의 능동적 선택",
+        "passed": true,
+        "note": "조력자인 곰 아저씨의 도움을 받지 못하는 상황에서 스스로 냄비 모자를 벗어 던지고 개울로 뛰어드는 선택이 절정에서 명확히 드러남."
+      },
+      {
+        "label": "낭독 리듬",
+        "passed": true,
+        "note": "'우르르 쾅쾅', '오독오독', '첨벙', '후들후들' 등 풍부한 의성어와 의태어를 사용하였으며, 긴박한 순간에 문장 호흡을 조절하여 리듬감이 뛰어남."
+      },
+      {
+        "label": "교훈의 간접성",
+        "passed": true,
+        "note": "용기나 우정에 대해 직접 설명하는 문장 없이, 냄비 모자를 버리는 행위와 마지막 귀의 변화를 통해 인물의 성장을 독자가 스스로 느끼게 함."
+      },
+      {
+        "label": "장면 내 사건 진행",
+        "passed": true,
+        "note": "모든 장면에서 인물이 숨거나, 달리거나, 밧줄을 잡는 등 구체적인 사건이 진행되고 있으며 정지된 묘사 페이지가 없음."
+      },
+      {
+        "label": "마지막 문장의 힘",
+        "passed": true,
+        "note": "첫 장면에서 두려움으로 처져 있던 귀가 마지막에 '꼿꼿하게 서 있었다'는 시각적 대비를 통해 설명 없이도 강렬한 여운과 변화를 보여줌."
+      }
+    ]
+  },
+  "finalScenes": [
+    {
+      "sceneNumber": 1,
+      "beat": "두려움의 실감",
+      "text": "우르르 쾅쾅! 하늘이 짓누르듯 내려앉자 코리의 귀가 바닥까지 축 처졌어요. 이불 속으로 쏙, 발끝까지 숨겼지만 심장 소리는 쿵쾅쿵쾅 더 크게 들려요.",
+      "textSource": "ai",
+      "characters": [
+        "cory"
+      ],
+      "location": "코리의 방",
+      "emotion": "두려움",
+      "visualFocus": "이불 속에 웅크린 코리",
+      "preferredTextArea": "lower-right"
+    },
+    {
+      "sceneNumber": 2,
+      "beat": "회피의 기술(웃음)",
+      "text": "코리는 비 오는 날이면 '천하무적 냄비 모자'를 써요. \"이렇게 하면 구름도 나를 못 찾겠지?\" 식탁 밑에 숨어 당근을 오독오독 씹으며 혼잣말을 했어요.",
+      "textSource": "ai",
+      "characters": [
+        "cory"
+      ],
+      "location": "주방",
+      "emotion": "안도",
+      "visualFocus": "냄비 모자를 쓰고 당근을 먹는 코리",
+      "preferredTextArea": "upper-left"
+    },
+    {
+      "sceneNumber": 3,
+      "beat": "회피의 그늘",
+      "text": "창문 너머로 친구들이 물웅덩이에서 첨벙거리는 소리가 들려요. 코리는 냄비 모자 밑으로 눈만 빼꼼 내밀고는 길게 한숨을 내쉬었지요.",
+      "textSource": "ai",
+      "characters": [
+        "cory",
+        "friends"
+      ],
+      "location": "거실 창가",
+      "emotion": "부러움",
+      "visualFocus": "창밖을 내다보는 코리의 눈",
+      "preferredTextArea": "lower-center"
+    },
+    {
+      "sceneNumber": 4,
+      "beat": "소중한 존재와의 일상",
+      "text": "현관 앞에 놓인 빈 바구니가 코리를 빤히 쳐다봐요. 오늘은 밤비와 개울 너머로 보랏빛 꽃을 찾으러 가기로 한 날이에요.",
+      "textSource": "ai",
+      "characters": [
+        "cory"
+      ],
+      "location": "현관",
+      "emotion": "망설임",
+      "visualFocus": "현관의 빈 바구니",
+      "preferredTextArea": "center-right"
+    },
+    {
+      "sceneNumber": 5,
+      "beat": "계기 — 소중한 존재가 위험에",
+      "text": "하늘이 뒤집힌 듯 비가 퍼부어요. 개울물이 넘실거리며 밤비를 덮칠 듯 일렁여요. 밤비는 젖은 나무뿌리를 쥔 채 간신히 버티고 있어요.",
+      "textSource": "ai",
+      "characters": [
+        "cory",
+        "bambi"
+      ],
+      "location": "개울가",
+      "emotion": "경악",
+      "visualFocus": "나무뿌리에 매달린 밤비",
+      "preferredTextArea": "upper-center"
+    },
+    {
+      "sceneNumber": 6,
+      "beat": "도움을 찾지만 실패",
+      "text": "코리는 곰 아저씨네 집으로 달려갔지만 문은 꿈쩍도 하지 않았어요. \"누구 없어요? 도와주세요!\" 외쳐보아도 비바람 소리에 목소리가 흩어져 버려요.",
+      "textSource": "ai",
+      "characters": [
+        "cory"
+      ],
+      "location": "곰 아저씨네 집 앞",
+      "emotion": "절박함",
+      "visualFocus": "닫힌 커다란 문",
+      "preferredTextArea": "lower-left"
+    },
+    {
+      "sceneNumber": 7,
+      "beat": "갈등 — 나뿐이다",
+      "text": "돌아오는 길, 코리의 다리가 후들후들 떨렸어요. 어른들도 없고, 비는 더 거세지는데 밤비의 목소리는 점점 작아지고 있었지요.",
+      "textSource": "ai",
+      "characters": [
+        "cory",
+        "bambi"
+      ],
+      "location": "숲길",
+      "emotion": "불안",
+      "visualFocus": "후들거리는 코리의 다리",
+      "preferredTextArea": "upper-right"
+    },
+    {
+      "sceneNumber": 8,
+      "beat": "출발 — 두려움을 향해",
+      "text": "코리는 냄비 모자를 벗어 던졌어요. 빗줄기가 뺨을 때리고 천둥소리가 귀를 때렸지만, 코리는 흙탕물을 박차며 개울을 향해 달렸어요.",
+      "textSource": "ai",
+      "characters": [
+        "cory"
+      ],
+      "location": "개울로 가는 길",
+      "emotion": "결의",
+      "visualFocus": "바닥에 떨어진 냄비 모자",
+      "preferredTextArea": "lower-right"
+    },
+    {
+      "sceneNumber": 9,
+      "beat": "문턱(숨죽임)",
+      "text": "무너질 듯 출렁이는 나무다리 앞에 코리가 멈춰 섰어요. 번쩍! 번개가 하늘을 가르자 코리는 질끈 감았던 눈을 부릅떴어요.",
+      "textSource": "ai",
+      "characters": [
+        "cory"
+      ],
+      "location": "나무다리 앞",
+      "emotion": "긴장",
+      "visualFocus": "코리의 부릅뜬 눈",
+      "preferredTextArea": "center-left"
+    },
+    {
+      "sceneNumber": 10,
+      "beat": "직면(절정)",
+      "text": "코리의 턱이 덜덜 떨리고 눈물이 빗물과 섞여 흘러요. 하지만 멈추지 않아요. 밧줄을 쥔 손에 하얗게 힘을 주며 한 뼘씩 앞으로 나아갔어요.",
+      "textSource": "ai",
+      "characters": [
+        "cory"
+      ],
+      "location": "나무다리 위",
+      "emotion": "용기",
+      "visualFocus": "밧줄을 꽉 쥔 하얀 손",
+      "preferredTextArea": "upper-right"
+    },
+    {
+      "sceneNumber": 11,
+      "beat": "구출과 재회",
+      "text": "\"밤비야, 내 손 잡아!\" 코리가 젖은 앞발을 힘껏 뻗었어요. 두 작은 손이 꼭 맞닿은 순간, 코리는 더 이상 천둥소리가 들리지 않았어요.",
+      "textSource": "ai",
+      "characters": [
+        "cory",
+        "bambi"
+      ],
+      "location": "개울 건너편",
+      "emotion": "안도",
+      "visualFocus": "맞잡은 두 손",
+      "preferredTextArea": "center"
+    },
+    {
+      "sceneNumber": 12,
+      "beat": "건너편 — 같은 두려움 앞의 달라진 주인공",
+      "text": "비는 여전히 내리고 천둥은 다시 울렸어요. 하지만 코리는 이제 냄비 속으로 숨지 않아요. 밤비의 어깨를 감싸 쥔 코리의 젖은 귀가 꼿꼿하게 서 있었지요.",
+      "textSource": "ai",
+      "characters": [
+        "cory",
+        "bambi"
+      ],
+      "location": "숲길",
+      "emotion": "당당함",
+      "visualFocus": "꼿꼿하게 선 코리의 귀",
+      "preferredTextArea": "lower-center"
+    }
+  ]
+}

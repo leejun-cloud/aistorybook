@@ -1,0 +1,19 @@
+{
+  "ranAt": "2026-08-31",
+  "projectId": "book-mthcrush",
+  "characterId": "char-mthcstt1",
+  "description": "겁 많지만 용감한 아기 토끼 (a timid but brave baby rabbit)",
+  "totalGeminiCalls": 11,
+  "callBreakdown": {
+    "styleExtract": 1,
+    "candidatesRound1_rejected": 4,
+    "candidatesRound2_final": 4,
+    "dnaExtraction": 1,
+    "refine": 1
+  },
+  "models": { "image": "gemini-2.5-flash-image", "vision": "gemini-2.5-flash" },
+  "finding_round1": "스타일 참고 이미지를 레퍼런스로 붙이면 그 안의 캐릭터 의상·소품(파란 멜빵바지+빨간 배낭)이 새 캐릭터로 그대로 복제됨 — 저작권 원칙 위반 리스크. STYLE_REF_ONLY_CLAUSE(스타일만 참고, 캐릭터·의상·소품·구도 복제 금지)를 프롬프트에 추가하여 해결.",
+  "finding_round2": "4후보 실루엣 차별화: A(둥글고 통통, 멜빵바지+초록 스카프) / B(길고 마른 수직 실루엣, 베이지 오버올) / C(탄탄한 자연 토끼, 직립 귀) / D(처진 롭이어, 물방울형 실루엣). 4장 모두 실루엣만으로 구별 가능. 배경·화풍(수채화, 여백 많은 배경)은 동일하게 유지됨.",
+  "confirmed": "candidate D (char-mthcstt1-cand-3) → DNA 추출 성공 (dna-sample.json)",
+  "refineTest": "cand-3에 'add a small red scarf around the neck' → 다른 요소 전부 유지된 채 목도리만 추가됨 (refined-D-red-scarf.png)"
+}

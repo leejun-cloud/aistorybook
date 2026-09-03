@@ -1,0 +1,43 @@
+{
+  "ranAt": "2026-08-31T15:09:10.444Z",
+  "projectId": "book-scenetest",
+  "source": {
+    "scenes": "tests/story/sample-run.json finalScenes 1~3 (코리, 용기형 12장면)",
+    "character": "book-mthcrush char-mthcstt1 (확정 롭이어 아기 토끼, DNA fixed 13항목)",
+    "style": "업로드 수채화 스타일 참고 1장 + 스타일 서술"
+  },
+  "totalImageCalls": 6,
+  "callBreakdown": { "scene1": 2, "scene2": 2, "scene3": 2 },
+  "textCalls": { "templateRecommendation": 3 },
+  "generation": [
+    { "sceneNumber": 1, "candidates": ["scene-1-cand-0", "scene-1-cand-1"], "failures": 0 },
+    { "sceneNumber": 2, "candidates": ["scene-2-cand-0", "scene-2-cand-1"], "failures": 0, "elapsedMs": 13129 },
+    { "sceneNumber": 3, "candidates": ["scene-3-cand-0", "scene-3-cand-1"], "failures": 0, "elapsedMs": 15509 }
+  ],
+  "selection": { "1": "scene-1-cand-0", "2": "scene-2-cand-0", "3": "scene-3-cand-0" },
+  "consistencyReview": {
+    "scene-1-cand-0": "PASS — 롭이어·황갈색 털·머리 술·X 입·수채화 전부 유지",
+    "scene-1-cand-1": "PASS — 유지. 구도만 더 클로즈업",
+    "scene-2-cand-0": "PASS(경미) — 외형 유지. 입이 벌어진 웃는 표정은 forbidden('open mouth')에 저촉되나 장면 감정(안도)상 자연스러움",
+    "scene-2-cand-1": "PASS(경미) — 유지. 눈동자에 푸른 기 — forbidden('different eye colors') 경계선",
+    "scene-3-cand-0": "PASS — 유지. 냄비 모자·창밖 친구들 장면 서술도 정확",
+    "scene-3-cand-1": "FAIL — 파란 멜빵바지+빨간 배낭 등장 (forbidden: 의상/액세서리 금지). 스타일 참고 이미지의 캐릭터 의상이 누출된 파트 2 round1과 동일 실패 모드. 후보 2장 체제 덕에 cand-0 선택으로 회피됨 — 자동 DNA 검사(후속)의 필요 근거"
+  },
+  "templates": [
+    { "sceneNumber": 1, "templateId": "L07", "rankedIds": ["L07", "L01", "L03"], "usedFallback": false, "reason": "두려움이라는 강렬한 감정을 풀블리드로 표현하고, 선호하는 우하단 텍스트 영역에 글을 배치하기에 가장 적합" },
+    { "sceneNumber": 2, "templateId": "L09", "rankedIds": ["L09", "L06", "L04"], "usedFallback": false, "reason": "좌상단 텍스트 칼럼이 선호 위치에 맞고 85자 텍스트에는 좁은 칼럼이 오버레이보다 안정적" },
+    { "sceneNumber": 3, "templateId": "L01", "rankedIds": ["L01", "L08", "L02"], "usedFallback": false, "reason": "풀블리드 이미지로 부러움 전달, 선호하는 하단 중앙 텍스트 위치에 부합" }
+  ],
+  "pdfReview": {
+    "view": "4페이지(표제지+3장면) 210×210mm. 각 페이지 글·그림 배치 정상, 오버레이 텍스트는 그림의 '단순 배경 예약 영역' 위에 얹혀 가독성 확보",
+    "print": "4페이지 226×226mm. 재단여분 3mm까지 그림 확장 + 네 모서리 재단선 확인",
+    "fonts": "Pretendard Regular/Bold 로컬 임베드 렌더 확인 (표제지 Bold)"
+  },
+  "outputs": {
+    "viewingPdfPath": "tests/scene/output/book-view.pdf",
+    "printPdfPath": "tests/scene/output/book-print.pdf",
+    "viewingHtmlPath": "tests/scene/output/book-view.html",
+    "printHtmlPath": "tests/scene/output/book-print.html",
+    "pagePreviews": "tests/scene/output/preview/*.png"
+  }
+}

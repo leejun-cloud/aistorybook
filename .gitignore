@@ -1,0 +1,9 @@
+node_modules/
+.next/
+out/
+projects/
+.env*.local
+*.tsbuildinfo
+.DS_Store
+references/
+firebase-debug.log

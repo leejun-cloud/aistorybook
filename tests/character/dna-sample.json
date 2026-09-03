@@ -1,0 +1,45 @@
+{
+  "description": "겁 많지만 용감한 아기 토끼 (a timid but brave baby rabbit)",
+  "referenceImageUrl": "/api/character/asset?projectId=book-mthcrush&name=char-mthcstt1-cand-3.png",
+  "textDNA": {
+    "fixed": [
+      "Species: Baby lop-eared rabbit.",
+      "Main fur color: Light to medium brown (tan).",
+      "Secondary fur color: Lighter cream/off-white on the muzzle, belly, chest, and inside of the legs/paws.",
+      "Ear color: Outer ears are light to medium brown, inner ears are light pink.",
+      "Eyes: Large, round, solid black with a distinct small white circular highlight in the upper part of each eye.",
+      "Nose: Small, light pink, triangular shape.",
+      "Mouth: Small black 'X' shape located directly below the nose.",
+      "Whiskers: Thin, subtle black lines extending from the sides of the muzzle (approximately 3-4 per side).",
+      "Ears: Long, floppy (lop) ears that hang downwards to the sides of the head.",
+      "Head Tuft: A small tuft of light brown fur/hair on top of the head, styled slightly forward over the forehead.",
+      "Body proportions: Plump, rounded, baby-like body with short limbs.",
+      "Typical standing posture: When standing on two feet, the character holds its front paws together in front of its chest/belly.",
+      "Art Style: Watercolor illustration style with distinct thin black outlines, soft textures, and a gentle appearance."
+    ],
+    "recurringProps": [],
+    "forbidden": [
+      "Any species other than a lop-eared baby rabbit.",
+      "Upright or differently shaped ears.",
+      "Significant changes to fur color (e.g., bright colors, patterns not present in the reference).",
+      "Different eye colors (e.g., blue, green), smaller or differently shaped eyes, or absence of white highlights in eyes.",
+      "Glasses, monocles, or similar eye accessories.",
+      "Different nose shape (e.g., realistic rabbit nose) or color.",
+      "Different mouth shape (e.g., open mouth, wide smile, frown, visible teeth).",
+      "Facial hair (other than the established whiskers and head tuft).",
+      "Outfits, clothing, hats, bows, jewelry, or any other accessories.",
+      "Unnatural or radically different body proportions (e.g., skinny, overly muscular, very long legs).",
+      "Realistic photo style or drastically different art styles (e.g., CGI, 3D render, highly abstract, comic book style, pixel art).",
+      "Sharp claws or visible teeth.",
+      "Aggressive, angry, or overly confident facial expressions that contradict the \"timid\" aspect of its personality."
+    ]
+  },
+  "style": {
+    "source": "upload",
+    "referenceImageUrls": [
+      "/api/character/asset?projectId=book-mthcrush&name=style-ref-0.png"
+    ],
+    "description": "Soft watercolor painting with gentle, thin, dark outlines, a soft and muted natural palette, subtle paper texture and watercolor pigment variations, and sparse washes with significant negative space in the background.",
+    "copyrightAcknowledged": true
+  }
+}

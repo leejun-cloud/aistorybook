@@ -1,0 +1,45 @@
+{
+  "ok": true,
+  "status": 200,
+  "elapsed_ms": 10787,
+  "headers": {
+    "alt-svc": "h3=\":443\"; ma=2592000,h3-29=\":443\"; ma=2592000",
+    "content-encoding": "gzip",
+    "content-type": "application/json; charset=UTF-8",
+    "date": "Mon, 31 Aug 2026 14:31:15 GMT",
+    "server": "scaffolding on HTTPServer2",
+    "server-timing": "gfet4t7; dur=10123",
+    "transfer-encoding": "chunked",
+    "vary": "Origin, X-Origin, Referer",
+    "x-content-type-options": "nosniff",
+    "x-frame-options": "SAMEORIGIN",
+    "x-gemini-service-tier": "standard",
+    "x-xss-protection": "0"
+  },
+  "model": "gemini-2.5-flash-image",
+  "hasImage": true,
+  "textOut": null,
+  "finishReason": "STOP",
+  "usageMetadata": {
+    "promptTokenCount": 329,
+    "candidatesTokenCount": 1290,
+    "totalTokenCount": 1619,
+    "promptTokensDetails": [
+      {
+        "modality": "TEXT",
+        "tokenCount": 71
+      },
+      {
+        "modality": "IMAGE",
+        "tokenCount": 258
+      }
+    ],
+    "candidatesTokensDetails": [
+      {
+        "modality": "IMAGE",
+        "tokenCount": 1290
+      }
+    ],
+    "serviceTier": "standard"
+  }
+}

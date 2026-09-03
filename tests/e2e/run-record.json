@@ -1,0 +1,250 @@
+{
+  "ranAt": "2026-09-02T15:12:27.214Z",
+  "input": {
+    "idea": "겁 많은 아기 고슴도치가 처음으로 밤 숲을 건너 아픈 할머니에게 꿀을 가져다주는 이야기",
+    "targetAge": "5~7세",
+    "sceneCount": 8,
+    "mood": "조마조마하다가 포근하게",
+    "pattern": "courage"
+  },
+  "errors": [],
+  "projectId": "book-mtk8j1vz",
+  "story": {
+    "gatePassed": true,
+    "gateItems": [
+      {
+        "label": "주인공의 능동적 선택",
+        "passed": true,
+        "note": "도치가 두려움을 무릅쓰고 스스로 랜턴을 켜고 밤 숲으로 뛰어들어 문제를 해결함."
+      },
+      {
+        "label": "낭독 리듬",
+        "passed": true,
+        "note": "'바르르', '움찔움찔', '다다다닥' 등 의성어와 문장 길이의 변화가 낭독의 맛을 살림."
+      },
+      {
+        "label": "교훈의 간접성",
+        "passed": true,
+        "note": "용기에 대한 직접적인 설명 없이, 밤 숲을 바라보는 도치의 시선 변화로 주제를 드러냄."
+      },
+      {
+        "label": "장면 내 사건 진행",
+        "passed": true,
+        "note": "모든 장면에서 인물의 신체적 반응이나 구체적인 움직임이 발생하며 이야기가 전진함."
+      },
+      {
+        "label": "마지막 문장의 힘",
+        "passed": true,
+        "note": "설명조의 마무리가 아닌, 시각과 후각을 자극하는 묘사로 여운을 남기며 끝맺음."
+      }
+    ],
+    "scenes": [
+      {
+        "n": 1,
+        "beat": "두려움의 실감",
+        "text": "숲의 그림자가 괴물처럼 길어져요. 도치의 가시가 바르르, 발바닥이 움찔움찔. 어둠이 닿은 발끝이 얼음장처럼 차가워졌어요."
+      },
+      {
+        "n": 2,
+        "beat": "회피의 기술",
+        "text": "해가 뉘엿뉘엿 지면 도치는 서둘러 이불을 뒤집어써요. \"난 밤에는 잠만 자는 고슴도치야!\" 꼬리만 살짝 내놓고 쿨쿨, 자는 척을 하지요."
+      },
+      {
+        "n": 3,
+        "beat": "회피의 그늘",
+        "text": "창밖에서 반딧불이들이 춤을 춰요. 도치는 이불 틈으로 새어 나오는 불빛을 보며 입술을 달싹였어요. 같이 놀고 싶지만 발가락이 꼼짝도 안 해요."
+      },
+      {
+        "n": 4,
+        "beat": "계기",
+        "text": "할머니의 기침 소리가 방 안을 가득 채워요. \"꿀... 달콤한 꿀 한 모금만 있으면...\" 할머니의 주름진 손이 침대 밑으로 툭 떨어졌어요."
+      },
+      {
+        "n": 5,
+        "beat": "갈등",
+        "text": "집 안에는 도치뿐이에요. 꿀 단지는 저 멀리, 밤이 깊게 잠든 참나무 아래에 있지요. 도치는 먼지 쌓인 랜턴을 꺼내 불을 켰어요."
+      },
+      {
+        "n": 6,
+        "beat": "문턱(숨죽임)",
+        "text": "숲 입구에서 도치의 발이 딱 멈췄어요. 검은 나무들이 팔을 벌려 도치를 낚아채려는 것 같아요. 도치는 심장 위에 손을 얹고 후우, 크게 숨을 내뱉었어요."
+      },
+      {
+        "n": 7,
+        "beat": "직면(절정)",
+        "text": "다다다닥! 도치는 어둠 속으로 뛰어들었어요. 나뭇가지에 가시가 걸려도 멈추지 않고 달렸지요. 마침내 커다란 참나무 구멍에서 반짝이는 꿀 단지를 찾아냈어요."
+      },
+      {
+        "n": 8,
+        "beat": "건너편",
+        "text": "달콤한 꿀을 마신 할머니가 도치를 품에 꼭 안아주었어요. 도치는 창가에 앉아 밤 숲을 보았지요. 반짝이는 별 아래, 숲이 시원한 풀냄새를 풍기며 잠들어 있었어요."
+      }
+    ]
+  },
+  "character": {
+    "dna": {
+      "fixed": [
+        "Body shape: extremely round and plump, almost spherical.",
+        "Quills: soft, fuzzy texture, light chestnut-brown color, covering the back and sides of the body and the top of the head.",
+        "Face and belly color: smooth cream/pale beige.",
+        "Ears: small, rounded triangular shape, cream-colored with a slightly darker tan inner ear.",
+        "Eyes: very large, perfectly round, dark brown with two distinct small white circular highlights in each eye.",
+        "Nose: small, dark brown, slightly rounded triangular shape.",
+        "Mouth: small, simple, dark brown line forming a small 'o' shape.",
+        "Cheeks: small, soft, light pink blush on each cheek.",
+        "Limbs: small, stubby, cream-colored paws/feet, depicted with minimal outline.",
+        "Overall art style: soft, watercolor/digital painting style with gentle shading and no harsh outlines."
+      ],
+      "recurringProps": [
+        "Acorn cap: small, light brown, textured acorn cap with a short stem on top, worn centered on the head."
+      ],
+      "forbidden": [
+        "Sharp or spiky quills; quills of any color other than soft chestnut-brown.",
+        "Face, belly, or limb colors other than cream/pale beige.",
+        "Eye colors other than dark brown; different eye shapes (e.g., almond, squinting, realistic).",
+        "Glasses or any other eye accessories.",
+        "Clothing items (e.g., shirts, pants, scarves, shoes) or any accessories beyond the specified acorn cap.",
+        "Body shapes that are not extremely round and plump.",
+        "Realistic photo style or highly detailed fur texture (must maintain soft, drawn style).",
+        "Any hats or head accessories other than the specific acorn cap.",
+        "Mouth showing teeth, a wide smile, or a prominent frown.",
+        "Any significant deviation from the established color palette and art style."
+      ]
+    },
+    "referenceImageUrl": "/api/character/asset?projectId=book-mtk8j1vz&name=hero-cand-0.png"
+  },
+  "scenes": [
+    {
+      "n": 1,
+      "ok": true,
+      "bestScore": 100,
+      "rounds": 1,
+      "selected": "scene-1-cand-0",
+      "template": "L06",
+      "usedFallback": false
+    },
+    {
+      "n": 2,
+      "ok": true,
+      "bestScore": 100,
+      "rounds": 1,
+      "selected": "scene-2-cand-0",
+      "template": "L08",
+      "usedFallback": false
+    },
+    {
+      "n": 3,
+      "ok": true,
+      "bestScore": 100,
+      "rounds": 1,
+      "selected": "scene-3-cand-0",
+      "template": "L07",
+      "usedFallback": false
+    },
+    {
+      "n": 4,
+      "ok": true,
+      "bestScore": 100,
+      "rounds": 1,
+      "selected": "scene-4-cand-0",
+      "template": "L06",
+      "usedFallback": false
+    },
+    {
+      "n": 5,
+      "ok": true,
+      "bestScore": 100,
+      "rounds": 1,
+      "selected": "scene-5-cand-0",
+      "template": "L01",
+      "usedFallback": false
+    },
+    {
+      "n": 6,
+      "ok": true,
+      "bestScore": 100,
+      "rounds": 1,
+      "selected": "scene-6-cand-0",
+      "template": "L06",
+      "usedFallback": false
+    },
+    {
+      "n": 7,
+      "ok": true,
+      "bestScore": 100,
+      "rounds": 1,
+      "selected": "scene-7-cand-0",
+      "template": "L01",
+      "usedFallback": false
+    },
+    {
+      "n": 8,
+      "ok": true,
+      "bestScore": 100,
+      "rounds": 1,
+      "selected": "scene-8-cand-0",
+      "template": "L01",
+      "usedFallback": false
+    }
+  ],
+  "cover": {
+    "spineMm": 1.5,
+    "pdf": "/Users/ichangjun/Documents/GitHub/test/aistorybook/projects/book-mtk8j1vz/output/cover-wrap.pdf",
+    "dims": {
+      "trimWidth": 365.5,
+      "trimHeight": 257,
+      "pageWidth": 371.5,
+      "pageHeight": 263,
+      "spineMm": 1.5,
+      "spineTextIncluded": false,
+      "warnings": [
+        "책등 폭 1.5mm < 5mm — 책등 제목 인쇄가 어려워 책등 텍스트를 자동 생략합니다."
+      ]
+    }
+  },
+  "upscale": {
+    "upscaled": 8,
+    "skipped": 1
+  },
+  "preflight": {
+    "ranAt": "2026-09-02T15:32:34.871Z",
+    "passed": true,
+    "items": [
+      {
+        "label": "페이지 누락·순서",
+        "passed": true,
+        "detail": "8페이지, 순번 연속·중복 없음"
+      },
+      {
+        "label": "글 넘침",
+        "passed": true,
+        "detail": "모든 텍스트 슬롯 안에 수납됨 (렌더 실측)"
+      },
+      {
+        "label": "안전영역 침범",
+        "passed": true,
+        "detail": "WARN: p1 글 슬롯이 권장 여백(20mm) 안쪽 — 오버레이 템플릿이면 허용 / p2 글 슬롯이 권장 여백(20mm) 안쪽 — 오버레이 템플릿이면 허용 / p3 글 슬롯이 권장 여백(20mm) 안쪽 — 오버레이 템플릿이면 허용 / p4 글 슬롯이 권장 여백(20mm) 안쪽 — 오버레이 템플릿이면 허용 / p5 글 슬롯이 권장 여백(20mm) 안쪽 — 오버레이 템플릿이면 허용 / p6 글 슬롯이 권장 여백(20mm) 안쪽 — 오버레이 템플릿이면 허용 / p7 글 슬롯이 권장 여백(20mm) 안쪽 — 오버레이 템플릿이면 허용 / p8 글 슬롯이 권장 여백(20mm) 안쪽 — 오버레이 템플릿이면 허용"
+      },
+      {
+        "label": "이미지 실해상도 (300dpi)",
+        "passed": true,
+        "detail": "8장 모두 300dpi 이상 (인쇄 변형본 기준)"
+      },
+      {
+        "label": "폰트 임베드",
+        "passed": true,
+        "detail": "Pretendard Regular/Bold 로컬 임베드"
+      },
+      {
+        "label": "판형 대응 (부크크2 B5 (46배판))",
+        "passed": true,
+        "detail": "WARN: 본문은 210×210 정사각, 프로파일은 182×257 — 정사각 판형은 부크크·교보 표준 프리셋에 없음 (print-profiles.md §2). 입점 전 판형 확정 필요"
+      }
+    ]
+  },
+  "pdfs": {
+    "view": "/Users/ichangjun/Documents/GitHub/test/aistorybook/projects/book-mtk8j1vz/output/book-view.pdf (18466KB)",
+    "print": "/Users/ichangjun/Documents/GitHub/test/aistorybook/projects/book-mtk8j1vz/output/book-print.pdf (11547KB)"
+  },
+  "totalSeconds": 1224
+}
