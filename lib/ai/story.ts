@@ -86,6 +86,23 @@ function sceneContractFailure(scenes: unknown, expectedCount: number): string | 
   return null;
 }
 
+/** 스토리 생성이 함께 산출하는 등장인물 명단 — 파트 2 캐릭터 시드용 */
+export interface StoryCastMember {
+  id: string;
+  name: string;
+  description: string;
+}
+
+function parseCast(raw: unknown): StoryCastMember[] {
+  if (!Array.isArray(raw)) return [];
+  return raw
+    .filter(
+      (c): c is StoryCastMember =>
+        !!c && typeof c.id === 'string' && typeof c.name === 'string' && typeof c.description === 'string',
+    )
+    .slice(0, 6);
+}
+
 /**
  * Gemini 호출 → JSON 파싱 → 컨트랙트 검사. 실패하면 이전 응답 + 수정 지시를
  * 붙여 낮은 temperature로 재요청하는 self-repair 루프 (최대 attempts회).
@@ -96,7 +113,7 @@ async function generateScenesWithContract(
   expectedCount: number,
   temperature: number,
   attempts = 3,
-): Promise<Scene[]> {
+): Promise<{ scenes: Scene[]; cast: StoryCastMember[] }> {
   let lastError = '';
   let lastResponse = '';
   for (let attempt = 0; attempt < attempts; attempt++) {
@@ -115,9 +132,9 @@ async function generateScenesWithContract(
           ].join('\n');
     const raw = await callGemini(system, prompt, attempt === 0 ? temperature : 0.3);
     lastResponse = raw;
-    let parsed: { scenes?: unknown };
+    let parsed: { scenes?: unknown; cast?: unknown };
     try {
-      parsed = parseJson<{ scenes?: unknown }>(raw);
+      parsed = parseJson<{ scenes?: unknown; cast?: unknown }>(raw);
     } catch (e) {
       lastError = `JSON 파싱 실패: ${(e as Error).message}`;
       continue;
@@ -127,7 +144,7 @@ async function generateScenesWithContract(
       lastError = failure;
       continue;
     }
-    return (parsed.scenes as Scene[]).map((s, i) => ({
+    const scenes = (parsed.scenes as Scene[]).map((s, i) => ({
       sceneNumber: i + 1,
       beat: s.beat,
       text: s.text.trim(),
@@ -138,6 +155,7 @@ async function generateScenesWithContract(
       visualFocus: s.visualFocus,
       preferredTextArea: s.preferredTextArea,
     }));
+    return { scenes, cast: parseCast(parsed.cast) };
   }
   throw new Error(`스토리 JSON 컨트랙트 실패 (${attempts}회 시도): ${lastError}`);
 }
@@ -217,7 +235,9 @@ export interface StoryDraftInput {
  * 품질 게이트 채점기로 각각 점수를 매겨 통과 항목이 가장 많은 초안을 채택한다.
  * 초안 1발(temperature 0.9의 복권)의 품질 분산을 줄이는 장치.
  */
-export async function generateStoryDraft(input: StoryDraftInput): Promise<Scene[]> {
+export async function generateStoryDraft(
+  input: StoryDraftInput,
+): Promise<{ scenes: Scene[]; cast: StoryCastMember[] }> {
   const metaInput = {
     idea: input.idea,
     targetAge: input.targetAge,
@@ -233,7 +253,10 @@ export async function generateStoryDraft(input: StoryDraftInput): Promise<Scene[
     Array.from({ length: n }, () => generateScenesWithContract(system, user, input.sceneCount, 0.9)),
   );
   const drafts = settled
-    .filter((r): r is PromiseFulfilledResult<Scene[]> => r.status === 'fulfilled')
+    .filter(
+      (r): r is PromiseFulfilledResult<{ scenes: Scene[]; cast: StoryCastMember[] }> =>
+        r.status === 'fulfilled',
+    )
     .map((r) => r.value);
   if (drafts.length === 0) {
     throw (settled[0] as PromiseRejectedResult).reason;
@@ -244,7 +267,7 @@ export async function generateStoryDraft(input: StoryDraftInput): Promise<Scene[
   const scores = await Promise.all(
     drafts.map(async (d) => {
       try {
-        return (await scoreScenes(d)).filter((it) => it.passed).length;
+        return (await scoreScenes(d.scenes)).filter((it) => it.passed).length;
       } catch {
         return -1; // 채점 실패 초안은 후순위
       }
@@ -309,12 +332,9 @@ export async function runQualityGate(scenes: Scene[]): Promise<QualityGateResult
     const repairUser = ['원고:', formatScenesForPrompt(current), '', '미달 항목을 고친 전체 원고 JSON을 반환하라.'].join('\n');
     let revised: Scene[];
     try {
-      revised = await generateScenesWithContract(
-        buildRepairSystemPrompt(failed),
-        repairUser,
-        current.length,
-        0.6,
-      );
+      revised = (
+        await generateScenesWithContract(buildRepairSystemPrompt(failed), repairUser, current.length, 0.6)
+      ).scenes;
     } catch {
       // 수정 실패 시 현재 원고 유지 + 마지막 채점 결과 반환
       break;

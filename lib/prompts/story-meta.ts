@@ -34,12 +34,19 @@ export const QUALITY_GATE_CRITERIA = [
 ] as const;
 
 const SCENE_SCHEMA = `{
+  "cast": [
+    {
+      "id": "장면 characters에 쓰는 짧은 영문 id (예: rabbit_kori)",
+      "name": "인물의 한국어 이름",
+      "description": "성격 + 그림으로 그릴 수 있는 겉모습 (색·체형·소품 포함, 2~3문장 한국어)"
+    }
+  ],
   "scenes": [
     {
       "sceneNumber": 1,
       "beat": "이 장면의 비트 이름 (선택한 패턴의 비트 배치에서 가져올 것)",
       "text": "이 장면의 본문. 대상 연령이 낭독으로 듣기 좋은 1~4문장.",
-      "characters": ["등장 캐릭터의 짧은 영문 id (예: rabbit, squirrel). 책 전체에서 같은 인물은 같은 id"],
+      "characters": ["등장 캐릭터의 짧은 영문 id — 반드시 cast의 id 중에서"],
       "location": "장소 (한국어, 간결하게)",
       "emotion": "이 장면의 감정 (한국어, 간결하게)",
       "visualFocus": "그림이 포착해야 할 한 가지 시각적 초점 (한국어)",

@@ -104,7 +104,7 @@ async function main() {
   // 2. 스토리 (best-of-N + 게이트)
   log('스토리 초안 생성 (best-of-N)…');
   const patterns = loadPatternLibrary().filter((p) => p.id === PATTERN_ID);
-  const draft = await generateStoryDraft({
+  const { scenes: draft } = await generateStoryDraft({
     idea: IDEA,
     targetAge: TARGET_AGE,
     sceneCount: SCENE_COUNT,

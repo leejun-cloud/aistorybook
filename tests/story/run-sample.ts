@@ -19,7 +19,7 @@ async function main() {
 
   console.log('1) 초안 생성 중...');
   const t0 = Date.now();
-  const scenes = await generateStoryDraft({
+  const { scenes } = await generateStoryDraft({
     idea,
     targetAge: '6~8세',
     sceneCount: 12,

@@ -45,12 +45,16 @@ export async function saveProject(project: Project): Promise<void> {
 
 export async function createProject(title: string): Promise<Project> {
   const id = `book-${Date.now().toString(36)}`;
+  const demo = demoProject();
   const project: Project = {
-    ...demoProject(),
+    ...demo,
     id,
     title: title || '제목 없는 동화책',
     createdAt: new Date().toISOString(),
     updatedAt: new Date().toISOString(),
+    // 목업 캐릭터(토토)는 ?project= 없는 미리보기 전용 — 실제 프로젝트는 빈 목록에서
+    // 시작한다 (스토리 생성 cast 자동 시드 / 브레인스토밍 시드 / 수동 추가로 채움)
+    character: { ...demo.character, characters: [] },
   };
   await saveProject(project);
   return project;

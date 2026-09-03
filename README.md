@@ -2,6 +2,9 @@
 
 PRD.md 기준 웹앱 (Next.js 14 · TypeScript · Tailwind). 아이디어 → 스토리 → 캐릭터·스타일 → 그림·조판 → 조절·인쇄의 4파트가 브라우저 UI부터 Gemini 연동, 인쇄용 PDF까지 전부 배선되어 있다.
 
+- **데모**: https://aistorybook-three.vercel.app (Vercel — Blob 스토리지 + 서버리스 PDF 렌더)
+- **실습(로컬)**: 아래 명령으로 실행 — 저장소는 파일시스템(`projects/`), 각자 본인 `GEMINI_API_KEY` 사용
+
 ## 실행
 
 ```bash

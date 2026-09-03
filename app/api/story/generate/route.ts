@@ -28,13 +28,37 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: `알 수 없는 patternIds: ${ids.join(',')}` }, { status: 400 });
     }
 
-    const scenes = await generateStoryDraft({
+    const { scenes, cast } = await generateStoryDraft({
       idea,
       targetAge,
       sceneCount,
       desiredMood: desiredMood ?? '',
       patterns,
     });
+
+    // 등장인물 자동 시드 (파트 2): 빈 플레이스홀더(후보·레퍼런스 없음)는 정리하고,
+    // 스토리가 산출한 cast를 미확정 캐릭터로 등록한다. 장면 characters의 id와
+    // 캐릭터 id가 일치해 그림 생성 시 장면별 등장인물 매칭이 정확해진다.
+    project.character.characters = project.character.characters.filter(
+      (x) => x.confirmed || x.referenceImageUrl || x.candidates.some((cand) => cand.imageUrl),
+    );
+    for (const member of cast) {
+      const existing = project.character.characters.find(
+        (x) => x.id === member.id || x.name === member.name,
+      );
+      if (existing) {
+        existing.description = member.description;
+      } else {
+        project.character.characters.push({
+          id: member.id,
+          name: member.name,
+          description: member.description,
+          candidates: [],
+          textDNA: { fixed: [], forbidden: [] },
+          confirmed: false,
+        });
+      }
+    }
 
     project.story = {
       ...project.story,
