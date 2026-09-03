@@ -25,7 +25,7 @@ const GEMINI_MODEL =
   process.env.GEMINI_STORY_MODEL || process.env.GEMINI_MODEL || 'gemini-3-flash-preview';
 
 function apiKey(): string {
-  const key = process.env.GEMINI_API_KEY;
+  const key = process.env.GEMINI_API_KEY?.trim();
   if (!key) throw new Error('GEMINI_API_KEY 환경변수가 없습니다 (.env.local 확인)');
   return key;
 }

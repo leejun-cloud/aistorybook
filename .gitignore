@@ -7,3 +7,5 @@ projects/
 .DS_Store
 references/
 firebase-debug.log
+.vercel
+.env*
