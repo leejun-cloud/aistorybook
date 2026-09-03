@@ -78,12 +78,12 @@ export async function generateCoverOptions(
   // 레퍼런스: 캐릭터 확정 레퍼런스 먼저, 업로드 스타일 참고 뒤에 (파트 3과 동일 순서)
   const refs: Buffer[] = [];
   for (const c of characters) {
-    const buf = c.referenceImageUrl ? readCharacterAsset(project.id, c.referenceImageUrl) : null;
+    const buf = c.referenceImageUrl ? await readCharacterAsset(project.id, c.referenceImageUrl) : null;
     if (buf) refs.push(buf);
   }
   if (project.character.style.source === 'upload') {
     for (const url of project.character.style.referenceImageUrls) {
-      const buf = readCharacterAsset(project.id, url);
+      const buf = await readCharacterAsset(project.id, url);
       if (buf) refs.push(buf);
     }
   }
@@ -96,13 +96,14 @@ export async function generateCoverOptions(
 
   const failures: { concept: CoverConcept; error: GeminiError }[] = [];
   const options: CoverOption[] = [];
-  results.forEach((r, i) => {
+  for (let i = 0; i < results.length; i++) {
+    const r = results[i];
     const concept = concepts[i];
     if (!r.ok) {
       failures.push({ concept, error: r.error });
-      return;
+      continue;
     }
-    const url = saveCharacterAsset(project.id, `cover-${concept}.png`, r.image.data);
+    const url = await saveCharacterAsset(project.id, `cover-${concept}.png`, r.image.data);
     const option: CoverOption = {
       id: `cover-${concept}`,
       concept,
@@ -114,7 +115,7 @@ export async function generateCoverOptions(
     const idx = project.publish.coverOptions.findIndex((o) => o.concept === concept);
     if (idx >= 0) project.publish.coverOptions[idx] = { ...project.publish.coverOptions[idx], ...option };
     else project.publish.coverOptions.push(option);
-  });
+  }
 
   return { ok: options.length > 0, options, failures };
 }

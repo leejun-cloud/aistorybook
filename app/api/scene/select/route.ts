@@ -20,7 +20,7 @@ export async function POST(req: NextRequest) {
   if (!projectId || typeof sceneNumber !== 'number' || !candidateId) {
     return NextResponse.json({ error: 'projectId, sceneNumber, candidateId가 필요합니다' }, { status: 400 });
   }
-  const project = loadProject(projectId) as ProjectWithSceneJobs | null;
+  const project = await loadProject(projectId) as ProjectWithSceneJobs | null;
   if (!project) return NextResponse.json({ error: 'project 없음' }, { status: 404 });
   const scene = project.story.scenes.find((s) => s.sceneNumber === sceneNumber);
   if (!scene) return NextResponse.json({ error: `장면 ${sceneNumber} 없음` }, { status: 404 });
@@ -41,7 +41,7 @@ export async function POST(req: NextRequest) {
     page.templateId = recommendation.templateId;
   }
 
-  saveProject(project);
+  await saveProject(project);
   return NextResponse.json({
     sceneNumber,
     imageUrl: selected.imageUrl,

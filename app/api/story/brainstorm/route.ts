@@ -22,7 +22,7 @@ export async function POST(req: NextRequest) {
   if (!projectId || !action) {
     return NextResponse.json({ error: 'projectId, action이 필요합니다' }, { status: 400 });
   }
-  const project = loadProject(projectId);
+  const project = await loadProject(projectId);
   if (!project) return NextResponse.json({ error: 'project 없음' }, { status: 404 });
 
   const bs = (project.story.brainstorm ??= { messages: [] });
@@ -30,14 +30,14 @@ export async function POST(req: NextRequest) {
   try {
     if (action === 'reset') {
       project.story.brainstorm = { messages: [] };
-      saveProject(project);
+      await saveProject(project);
       return NextResponse.json({ brainstorm: project.story.brainstorm });
     }
 
     if (action === 'start') {
       if (bs.messages.length === 0) {
         bs.messages.push({ role: 'assistant', text: BRAINSTORM_GREETING });
-        saveProject(project);
+        await saveProject(project);
       }
       return NextResponse.json({ brainstorm: bs });
     }
@@ -49,7 +49,7 @@ export async function POST(req: NextRequest) {
       bs.messages.push({ role: 'user', text: message.trim() });
       const reply = await brainstormReply(bs.messages);
       bs.messages.push({ role: 'assistant', text: reply });
-      saveProject(project);
+      await saveProject(project);
       return NextResponse.json({ brainstorm: bs });
     }
 
@@ -83,7 +83,7 @@ export async function POST(req: NextRequest) {
           } satisfies Character);
         }
       }
-      saveProject(project);
+      await saveProject(project);
       return NextResponse.json({ brainstorm: bs, story: project.story });
     }
 

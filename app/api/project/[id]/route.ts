@@ -3,7 +3,7 @@ import { loadProject, saveProject } from '../../../../lib/store';
 
 // GET  /api/project/<id>  → { project }
 export async function GET(_req: NextRequest, { params }: { params: { id: string } }) {
-  const project = loadProject(params.id);
+  const project = await loadProject(params.id);
   if (!project) return NextResponse.json({ error: 'project 없음' }, { status: 404 });
   return NextResponse.json({ project });
 }
@@ -14,6 +14,6 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
   if (!project || project.id !== params.id) {
     return NextResponse.json({ error: 'project 불일치' }, { status: 400 });
   }
-  saveProject(project);
+  await saveProject(project);
   return NextResponse.json({ ok: true });
 }

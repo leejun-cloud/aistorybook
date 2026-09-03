@@ -18,16 +18,16 @@ export async function POST(req: NextRequest) {
   if (!projectId || !description) {
     return NextResponse.json({ error: 'projectId, description이 필요합니다' }, { status: 400 });
   }
-  const project = loadProject(projectId);
+  const project = await loadProject(projectId);
   if (!project) return NextResponse.json({ error: 'project 없음' }, { status: 404 });
 
   // 스타일이 업로드 기반이면 참고 그림을 스타일 컨디셔닝 레퍼런스로 전달
   const style = project.character.style;
   const styleRefs =
     style.source === 'upload'
-      ? style.referenceImageUrls
-          .map((u) => readCharacterAsset(projectId, u))
-          .filter((b): b is Buffer => b !== null)
+      ? (await Promise.all(style.referenceImageUrls.map((u) => readCharacterAsset(projectId, u)))).filter(
+          (b): b is Buffer => b !== null,
+        )
       : [];
 
   const result = await generateCharacterCandidates(description, style, styleRefs);
@@ -36,10 +36,12 @@ export async function POST(req: NextRequest) {
   }
 
   const id = characterId || `char-${Date.now().toString(36)}`;
-  const candidates = result.candidates.map((c) => {
-    const url = saveCharacterAsset(projectId, `${id}-cand-${c.index}.png`, c.image);
-    return { id: `${id}-cand-${c.index}`, imageUrl: url, note: c.variation };
-  });
+  const candidates = await Promise.all(
+    result.candidates.map(async (c) => {
+      const url = await saveCharacterAsset(projectId, `${id}-cand-${c.index}.png`, c.image);
+      return { id: `${id}-cand-${c.index}`, imageUrl: url, note: c.variation };
+    }),
+  );
 
   let character = project.character.characters.find((c) => c.id === id);
   if (!character) {
@@ -57,7 +59,7 @@ export async function POST(req: NextRequest) {
   character.candidates = candidates;
   character.confirmed = false;
   character.referenceImageUrl = undefined;
-  saveProject(project);
+  await saveProject(project);
 
   return NextResponse.json({ characterId: id, candidates, failures: result.failures });
 }

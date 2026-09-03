@@ -8,9 +8,9 @@
 // 이미지 파일 저장 헬퍼(saveCharacterAsset 등)도 여기 둔다 — API 라우트
 // (app/api/character/**, app/api/style/**)가 공유한다.
 
-import fs from 'fs';
 import path from 'path';
 import type { CharacterTextDNA, StyleSpec } from '../types';
+import { readStoredFile, writeStoredFile } from '../storage';
 import { generateImage, generateVisionText, parseJsonLoose, type GeminiError } from './image';
 import {
   CANDIDATE_VARIATIONS,
@@ -147,19 +147,17 @@ export async function buildCharacterDNA(
 }
 
 // ---------------------------------------------------------------------------
-// 에셋 파일 저장 — projects/<id>/assets/ (PRD §5: 파일시스템 + 프로젝트 JSON)
+// 에셋 저장 — projects/<id>/assets/ (실제 I/O는 lib/storage.ts — 로컬 fs / Vercel Blob)
 // ---------------------------------------------------------------------------
 
-function assetsDir(projectId: string): string {
-  return path.join(process.cwd(), 'projects', path.basename(projectId), 'assets');
+function assetPath(projectId: string, name: string): string {
+  return `projects/${path.basename(projectId)}/assets/${path.basename(name)}`;
 }
 
 /** 이미지 버퍼를 projects/<id>/assets/<name>에 저장하고, 조회용 URL을 반환한다. */
-export function saveCharacterAsset(projectId: string, name: string, data: Buffer): string {
-  const dir = assetsDir(projectId);
-  fs.mkdirSync(dir, { recursive: true });
+export async function saveCharacterAsset(projectId: string, name: string, data: Buffer): Promise<string> {
   const safeName = path.basename(name);
-  fs.writeFileSync(path.join(dir, safeName), data);
+  await writeStoredFile(assetPath(projectId, safeName), data);
   return assetUrl(projectId, safeName);
 }
 
@@ -169,7 +167,7 @@ export function assetUrl(projectId: string, name: string): string {
 }
 
 /** assetUrl 또는 파일명으로 저장된 에셋을 읽는다. 없으면 null. */
-export function readCharacterAsset(projectId: string, nameOrUrl: string): Buffer | null {
+export async function readCharacterAsset(projectId: string, nameOrUrl: string): Promise<Buffer | null> {
   let name = nameOrUrl;
   if (nameOrUrl.startsWith('/api/')) {
     const q = nameOrUrl.split('?')[1] ?? '';
@@ -177,7 +175,5 @@ export function readCharacterAsset(projectId: string, nameOrUrl: string): Buffer
     if (!m) return null;
     name = m;
   }
-  const file = path.join(assetsDir(projectId), path.basename(name));
-  if (!fs.existsSync(file)) return null;
-  return fs.readFileSync(file);
+  return readStoredFile(assetPath(projectId, name));
 }

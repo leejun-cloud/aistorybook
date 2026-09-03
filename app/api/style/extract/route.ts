@@ -24,7 +24,7 @@ export async function POST(req: NextRequest) {
   if (files.length === 0 || files.length > 3) {
     return NextResponse.json({ error: '참고 그림은 1~3장이어야 합니다' }, { status: 400 });
   }
-  const project = loadProject(projectId);
+  const project = await loadProject(projectId);
   if (!project) return NextResponse.json({ error: 'project 없음' }, { status: 404 });
 
   const buffers: Buffer[] = [];
@@ -32,7 +32,7 @@ export async function POST(req: NextRequest) {
   for (let i = 0; i < files.length; i++) {
     const buf = Buffer.from(await files[i].arrayBuffer());
     buffers.push(buf);
-    urls.push(saveCharacterAsset(projectId, `style-ref-${i}.png`, buf));
+    urls.push(await saveCharacterAsset(projectId, `style-ref-${i}.png`, buf));
   }
 
   const result = await extractStyleFromReference(buffers);
@@ -46,7 +46,7 @@ export async function POST(req: NextRequest) {
     description: result.style.summary,
     copyrightAcknowledged: true,
   };
-  saveProject(project);
+  await saveProject(project);
 
   return NextResponse.json({ style: result.style, referenceImageUrls: urls });
 }

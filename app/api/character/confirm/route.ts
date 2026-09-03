@@ -13,13 +13,13 @@ export async function POST(req: NextRequest) {
   if (!projectId || !characterId || !candidateId) {
     return NextResponse.json({ error: 'projectId, characterId, candidateId가 필요합니다' }, { status: 400 });
   }
-  const project = loadProject(projectId);
+  const project = await loadProject(projectId);
   if (!project) return NextResponse.json({ error: 'project 없음' }, { status: 404 });
   const character = project.character.characters.find((c) => c.id === characterId);
   if (!character) return NextResponse.json({ error: 'character 없음' }, { status: 404 });
   const chosen = character.candidates.find((c) => c.id === candidateId);
   if (!chosen) return NextResponse.json({ error: 'candidate 없음' }, { status: 404 });
-  const image = readCharacterAsset(projectId, chosen.imageUrl);
+  const image = await readCharacterAsset(projectId, chosen.imageUrl);
   if (!image) return NextResponse.json({ error: '후보 이미지 파일 없음' }, { status: 404 });
 
   const result = await buildCharacterDNA(image, character.description);
@@ -30,7 +30,7 @@ export async function POST(req: NextRequest) {
   character.referenceImageUrl = chosen.imageUrl;
   character.textDNA = result.dna; // CharacterDNA ⊃ CharacterTextDNA (recurringProps 포함 저장)
   character.confirmed = true;
-  saveProject(project);
+  await saveProject(project);
 
   return NextResponse.json({ characterId, referenceImageUrl: chosen.imageUrl, textDNA: result.dna });
 }

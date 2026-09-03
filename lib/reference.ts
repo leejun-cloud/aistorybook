@@ -6,11 +6,11 @@
 // 복사되어, 기존 업로드-스타일 파이프라인(스타일 컨디셔닝 + 의상 누출 방지 절)을
 // 그대로 재사용한다.
 
-import fs from 'fs';
 import path from 'path';
 import type { Project } from './types';
 import { readCharacterAsset } from './ai/character';
 import { assetNameFromUrl } from './render/upscale';
+import { listStoredDirs, readStoredFile, writeStoredFile } from './storage';
 
 export interface StyleReference {
   id: string;
@@ -30,35 +30,29 @@ export interface StyleReference {
   textBoxDefault: 'box' | 'none';
 }
 
-const referencesRoot = () => path.join(process.cwd(), 'references');
-const referenceDir = (id: string) => path.join(referencesRoot(), path.basename(id));
-const referenceFile = (id: string) => path.join(referenceDir(id), 'reference.json');
+const referencePath = (id: string, name: string) => `references/${path.basename(id)}/${path.basename(name)}`;
+const referenceFile = (id: string) => referencePath(id, 'reference.json');
 
-export function listReferences(): StyleReference[] {
-  const root = referencesRoot();
-  if (!fs.existsSync(root)) return [];
-  return fs
-    .readdirSync(root, { withFileTypes: true })
-    .filter((d) => d.isDirectory())
-    .map((d) => loadReference(d.name))
+export async function listReferences(): Promise<StyleReference[]> {
+  const ids = await listStoredDirs('references');
+  const refs = await Promise.all(ids.map((id) => loadReference(id)));
+  return refs
     .filter((r): r is StyleReference => r !== null)
     .sort((a, b) => b.createdAt.localeCompare(a.createdAt));
 }
 
-export function loadReference(id: string): StyleReference | null {
-  const file = referenceFile(id);
-  if (!fs.existsSync(file)) return null;
+export async function loadReference(id: string): Promise<StyleReference | null> {
+  const buf = await readStoredFile(referenceFile(id));
+  if (!buf) return null;
   try {
-    return JSON.parse(fs.readFileSync(file, 'utf-8')) as StyleReference;
+    return JSON.parse(buf.toString('utf-8')) as StyleReference;
   } catch {
     return null;
   }
 }
 
-export function readReferenceAsset(id: string, name: string): Buffer | null {
-  const file = path.join(referenceDir(id), path.basename(name));
-  if (!fs.existsSync(file)) return null;
-  return fs.readFileSync(file);
+export async function readReferenceAsset(id: string, name: string): Promise<Buffer | null> {
+  return readStoredFile(referencePath(id, name));
 }
 
 /** 프로젝트에서 앵커로 삼을 이미지 URL들: 선택된 표지 + 앞쪽 확정 페이지 2장. */
@@ -81,24 +75,22 @@ function pickAnchorUrls(project: Project): string[] {
  * 완성(진행) 중인 프로젝트를 스타일 레퍼런스로 저장한다.
  * 실패 사유가 있으면 문자열 반환, 성공이면 StyleReference.
  */
-export function saveReferenceFromProject(project: Project, name?: string): StyleReference | string {
+export async function saveReferenceFromProject(project: Project, name?: string): Promise<StyleReference | string> {
   const anchors = pickAnchorUrls(project);
   if (anchors.length === 0) return '확정된 그림이 없어 레퍼런스로 저장할 수 없습니다 (파트 3에서 그림을 확정하세요)';
   if (!project.character.style.description) return '스타일 서술이 없습니다 (파트 2에서 스타일을 정하세요)';
 
   const id = `ref-${Date.now().toString(36)}`;
-  const dir = referenceDir(id);
-  fs.mkdirSync(dir, { recursive: true });
 
   const anchorImages: string[] = [];
-  anchors.forEach((url, i) => {
-    const buf = readCharacterAsset(project.id, url);
-    if (!buf) return;
-    const ext = (assetNameFromUrl(url) ?? '').match(/\.(jpe?g)$/i) ? 'jpg' : 'png';
+  for (let i = 0; i < anchors.length; i++) {
+    const buf = await readCharacterAsset(project.id, anchors[i]);
+    if (!buf) continue;
+    const ext = (assetNameFromUrl(anchors[i]) ?? '').match(/\.(jpe?g)$/i) ? 'jpg' : 'png';
     const fileName = `anchor-${i}.${ext}`;
-    fs.writeFileSync(path.join(dir, fileName), buf);
+    await writeStoredFile(referencePath(id, fileName), buf);
     anchorImages.push(fileName);
-  });
+  }
   if (anchorImages.length === 0) return '앵커 이미지 파일을 읽을 수 없습니다';
 
   const reference: StyleReference = {
@@ -114,7 +106,7 @@ export function saveReferenceFromProject(project: Project, name?: string): Style
     sceneCount: project.story.sceneCount,
     textBoxDefault: project.layout.textBoxDefault ?? 'box',
   };
-  fs.writeFileSync(referenceFile(id), JSON.stringify(reference, null, 2), 'utf-8');
+  await writeStoredFile(referenceFile(id), JSON.stringify(reference, null, 2));
   return reference;
 }
 
@@ -124,21 +116,19 @@ export function saveReferenceFromProject(project: Project, name?: string): Style
  * - 스타일 서술·분위기·연령·분량·조판 기본값 복제
  * - 스토리·캐릭터는 비워 둔다 — 사용자가 새로 만든다 (레퍼런스의 목적)
  */
-export function applyReferenceToProject(project: Project, reference: StyleReference): void {
-  const assetsDir = path.join(process.cwd(), 'projects', path.basename(project.id), 'assets');
-  fs.mkdirSync(assetsDir, { recursive: true });
-
+export async function applyReferenceToProject(project: Project, reference: StyleReference): Promise<void> {
   const urls: string[] = [];
-  reference.anchorImages.forEach((fileName, i) => {
-    const buf = readReferenceAsset(reference.id, fileName);
-    if (!buf) return;
+  for (let i = 0; i < reference.anchorImages.length; i++) {
+    const fileName = reference.anchorImages[i];
+    const buf = await readReferenceAsset(reference.id, fileName);
+    if (!buf) continue;
     const ext = fileName.endsWith('.jpg') ? 'jpg' : 'png';
     const target = `style-ref-${i}.${ext}`;
-    fs.writeFileSync(path.join(assetsDir, target), buf);
+    await writeStoredFile(`projects/${path.basename(project.id)}/assets/${target}`, buf);
     urls.push(
       `/api/character/asset?projectId=${encodeURIComponent(project.id)}&name=${encodeURIComponent(target)}`,
     );
-  });
+  }
 
   project.character.style = {
     source: 'upload',

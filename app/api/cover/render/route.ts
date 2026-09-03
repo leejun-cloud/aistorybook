@@ -1,7 +1,7 @@
-import fs from 'fs';
 import path from 'path';
 import { NextRequest, NextResponse } from 'next/server';
 import { loadProject, saveProject } from '../../../../lib/store';
+import { readStoredFile } from '../../../../lib/storage';
 import { getProfile, getInteriorPaper, type Binding } from '../../../../lib/cover/profiles';
 import { calculateSpine } from '../../../../lib/cover/spine';
 import { renderWrapCoverPdf } from '../../../../lib/cover/wrap';
@@ -20,7 +20,7 @@ export async function POST(req: NextRequest) {
   if (!projectId || !profileId || !binding || !paperName) {
     return NextResponse.json({ error: 'projectId, profileId, binding, paperName이 필요합니다' }, { status: 400 });
   }
-  const project = loadProject(projectId);
+  const project = await loadProject(projectId);
   if (!project) return NextResponse.json({ error: 'project 없음' }, { status: 404 });
 
   const profile = getProfile(profileId);
@@ -72,7 +72,7 @@ export async function POST(req: NextRequest) {
     });
     project.publish.selectedCoverId = selected.id;
     project.publish.outputs.printCoverPdfUrl = `/api/cover/render?projectId=${encodeURIComponent(projectId)}`;
-    saveProject(project);
+    await saveProject(project);
     return NextResponse.json({
       status: 'done',
       spine,
@@ -89,9 +89,9 @@ export async function POST(req: NextRequest) {
 export async function GET(req: NextRequest) {
   const projectId = req.nextUrl.searchParams.get('projectId');
   if (!projectId) return NextResponse.json({ error: 'projectId가 필요합니다' }, { status: 400 });
-  const file = path.join(process.cwd(), 'projects', path.basename(projectId), 'output', 'cover-wrap.pdf');
-  if (!fs.existsSync(file)) return NextResponse.json({ error: 'PDF 없음 — 먼저 POST로 렌더하세요' }, { status: 404 });
-  return new NextResponse(new Uint8Array(fs.readFileSync(file)), {
+  const buf = await readStoredFile(`projects/${path.basename(projectId)}/output/cover-wrap.pdf`);
+  if (!buf) return NextResponse.json({ error: 'PDF 없음 — 먼저 POST로 렌더하세요' }, { status: 404 });
+  return new NextResponse(new Uint8Array(buf), {
     headers: {
       'Content-Type': 'application/pdf',
       'Content-Disposition': 'inline; filename="cover-wrap.pdf"',

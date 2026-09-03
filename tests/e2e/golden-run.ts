@@ -86,7 +86,7 @@ async function main() {
   };
 
   // 1. 프로젝트 생성
-  const project = createProject('밤 숲의 꿀단지') as ProjectWithSceneJobs;
+  const project = (await createProject('밤 숲의 꿀단지')) as ProjectWithSceneJobs;
   record.projectId = project.id;
   log(`프로젝트 생성: ${project.id}`);
 
@@ -133,7 +133,7 @@ async function main() {
       { slotId: 'text-1', text: s.text },
     ],
   }));
-  saveProject(project);
+  await saveProject(project);
   record.story = {
     gatePassed: gate.passed,
     gateItems: gate.items,
@@ -147,11 +147,13 @@ async function main() {
   const candResult = await generateCharacterCandidates(CHARACTER_DESC, project.character.style);
   if (!candResult.ok) throw new Error(`캐릭터 후보 생성 실패: ${candResult.error.message}`);
   const charId = 'hero';
-  const candidates = candResult.candidates.map((c) => ({
-    id: `${charId}-cand-${c.index}`,
-    imageUrl: saveCharacterAsset(project.id, `${charId}-cand-${c.index}.png`, c.image),
-    note: c.variation,
-  }));
+  const candidates = await Promise.all(
+    candResult.candidates.map(async (c) => ({
+      id: `${charId}-cand-${c.index}`,
+      imageUrl: await saveCharacterAsset(project.id, `${charId}-cand-${c.index}.png`, c.image),
+      note: c.variation,
+    })),
+  );
   log(`후보 ${candidates.length}장 저장. 1번 후보 확정 + DNA 추출…`);
   const chosen = candidates[0];
   const dnaResult = await buildCharacterDNA(candResult.candidates[0].image, CHARACTER_DESC);
@@ -167,7 +169,7 @@ async function main() {
   };
   project.character.characters = [hero];
   project.character.approved = true;
-  saveProject(project);
+  await saveProject(project);
   record.character = { dna: dnaResult.dna, referenceImageUrl: chosen.imageUrl };
   log(`DNA 추출 완료 — fixed ${dnaResult.dna.fixed.length} / props ${dnaResult.dna.recurringProps.length} / forbidden ${dnaResult.dna.forbidden.length}`);
 
@@ -178,7 +180,7 @@ async function main() {
     log(`장면 ${scene.sceneNumber}/${SCENE_COUNT} 생성·검사…`);
     try {
       const v = await generateSceneCandidatesVerified(project, scene);
-      saveProject(project);
+      await saveProject(project);
       if (!v.ok || v.candidates.length === 0) {
         record.errors.push(`장면 ${scene.sceneNumber} 생성 실패`);
         record.scenes.push({ n: scene.sceneNumber, ok: false });
@@ -195,7 +197,7 @@ async function main() {
       const page = project.layout.pages.find((p) => p.sceneNumber === scene.sceneNumber)!;
       page.templateId = rec.templateId;
       recentTemplates.push(rec.templateId);
-      saveProject(project);
+      await saveProject(project);
       record.scenes.push({
         n: scene.sceneNumber,
         ok: true,
@@ -214,14 +216,14 @@ async function main() {
   project.layout.approved = project.layout.pages.every(
     (p) => p.slots.find((s) => s.slotId === 'image-1')?.imageUrl,
   );
-  saveProject(project);
+  await saveProject(project);
 
   // 5. 표지 (1방향 — 캐릭터 중심) + 책등 + 랩 표지 PDF
   log('표지 생성 (캐릭터 중심 1방향)…');
   const coverResult = await generateCoverOptions(project, ['character']);
   if (coverResult.ok) {
     project.publish.selectedCoverId = coverResult.options[0].id;
-    saveProject(project);
+    await saveProject(project);
     const profile = getProfile(PROFILE_ID)!;
     const paper = getInteriorPaper(profile, PAPER)!;
     const spine = calculateSpine({
@@ -255,7 +257,7 @@ async function main() {
   log('사전검사 실행…');
   const preflight = await runPreflight(project, { profileId: PROFILE_ID });
   project.publish.preflight = preflight;
-  saveProject(project);
+  await saveProject(project);
   record.preflight = preflight;
   log(`사전검사: ${preflight.passed ? 'PASS ✓' : 'FAIL'}`);
   for (const item of preflight.items) log(`  ${item.passed ? '✓' : '✗'} ${item.label} — ${item.detail ?? ''}`);

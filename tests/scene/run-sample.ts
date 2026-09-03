@@ -47,9 +47,10 @@ async function main() {
   );
   const scenes = sample.finalScenes.slice(0, SCENE_COUNT);
 
-  let project = loadProject(TEST_PROJECT) as ProjectWithSceneJobs | null;
+  let project = await loadProject(TEST_PROJECT) as ProjectWithSceneJobs | null;
   if (!project || fresh) {
-    const base = loadProject(SOURCE_PROJECT)!;
+    const base = await loadProject(SOURCE_PROJECT);
+    if (!base) throw new Error(`원본 프로젝트 없음: ${SOURCE_PROJECT}`);
     project = {
       ...base,
       id: TEST_PROJECT,
@@ -64,7 +65,7 @@ async function main() {
       if (c.referenceImageUrl) c.referenceImageUrl = fix(c.referenceImageUrl);
     }
     project.character.style.referenceImageUrls = project.character.style.referenceImageUrls.map(fix);
-    saveProject(project);
+    await saveProject(project);
   }
 
   // 2) 장면별 후보 2장 생성 (장면 단위 독립 — 한 장면 실패해도 계속)
@@ -79,7 +80,7 @@ async function main() {
     const t0 = Date.now();
     const res = await generateSceneImageCandidates(project, scene);
     record.imageCalls += 2;
-    saveProject(project);
+    await saveProject(project);
     console.log(
       `  → ${res.ok ? 'OK' : 'FAILED'} 후보 ${res.candidates.length}장, 실패 ${res.failures.length}, ${Date.now() - t0}ms, retryCount=${res.jobState.retryCount}`,
     );
@@ -119,7 +120,7 @@ async function main() {
     );
     record.templates.push({ sceneNumber: scene.sceneNumber, ...rec });
   }
-  saveProject(project);
+  await saveProject(project);
 
   // 5) HTML 조판 + PDF 2종
   const outDir = path.join(process.cwd(), 'tests', 'scene', 'output');

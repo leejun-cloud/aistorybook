@@ -1,9 +1,9 @@
-import fs from 'fs';
 import path from 'path';
 import { NextRequest, NextResponse } from 'next/server';
 import { loadProject, saveProject } from '../../../../lib/store';
 import { renderBookPdfs } from '../../../../lib/render/pdf';
 import { ensurePrintAssets } from '../../../../lib/render/upscale';
+import { readStoredFile, storedFileExists } from '../../../../lib/storage';
 
 export const maxDuration = 300;
 
@@ -13,7 +13,7 @@ export const maxDuration = 300;
 export async function POST(req: NextRequest) {
   const { projectId, sceneNumbers } = await req.json().catch(() => ({}));
   if (!projectId) return NextResponse.json({ error: 'projectId가 필요합니다' }, { status: 400 });
-  const project = loadProject(projectId);
+  const project = await loadProject(projectId);
   if (!project) return NextResponse.json({ error: 'project 없음' }, { status: 404 });
 
   try {
@@ -22,7 +22,7 @@ export async function POST(req: NextRequest) {
     const result = await renderBookPdfs(project, undefined, { sceneNumbers });
     project.publish.outputs.viewingPdfUrl = `/api/render/pdf?projectId=${encodeURIComponent(projectId)}&kind=view`;
     project.publish.outputs.printBodyPdfUrl = `/api/render/pdf?projectId=${encodeURIComponent(projectId)}&kind=print`;
-    saveProject(project);
+    await saveProject(project);
     return NextResponse.json({
       status: 'done',
       viewingPdfUrl: project.publish.outputs.viewingPdfUrl,
@@ -42,16 +42,15 @@ export async function GET(req: NextRequest) {
   const kind = req.nextUrl.searchParams.get('kind');
   if (!projectId) return NextResponse.json({ error: 'projectId가 필요합니다' }, { status: 400 });
 
-  const outDir = path.join(process.cwd(), 'projects', path.basename(projectId), 'output');
-  const files = {
-    view: path.join(outDir, 'book-view.pdf'),
-    print: path.join(outDir, 'book-print.pdf'),
+  const keys = {
+    view: `projects/${path.basename(projectId)}/output/book-view.pdf`,
+    print: `projects/${path.basename(projectId)}/output/book-print.pdf`,
   };
 
   if (kind === 'view' || kind === 'print') {
-    const file = files[kind];
-    if (!fs.existsSync(file)) return NextResponse.json({ error: 'PDF 없음 — 먼저 POST로 렌더하세요' }, { status: 404 });
-    return new NextResponse(new Uint8Array(fs.readFileSync(file)), {
+    const buf = await readStoredFile(keys[kind]);
+    if (!buf) return NextResponse.json({ error: 'PDF 없음 — 먼저 POST로 렌더하세요' }, { status: 404 });
+    return new NextResponse(new Uint8Array(buf), {
       headers: {
         'Content-Type': 'application/pdf',
         'Content-Disposition': `inline; filename="book-${kind}.pdf"`,
@@ -61,7 +60,7 @@ export async function GET(req: NextRequest) {
   }
 
   return NextResponse.json({
-    view: fs.existsSync(files.view),
-    print: fs.existsSync(files.print),
+    view: await storedFileExists(keys.view),
+    print: await storedFileExists(keys.print),
   });
 }

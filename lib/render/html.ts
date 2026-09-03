@@ -45,15 +45,15 @@ function esc(s: string): string {
 
 /**
  * /api/character/asset?... URL을 data URI로 변환 (file:// HTML에서 자립 렌더).
- * 인쇄 모드에서는 업스케일 변형본(@print.png)이 있으면 그것을 우선 쓴다.
+ * 인쇄 모드에서는 업스케일 변형본(@print.jpg)이 있으면 그것을 우선 쓴다.
  */
-function imageDataUri(projectId: string, url: string, mode: RenderMode): string | null {
+async function imageDataUri(projectId: string, url: string, mode: RenderMode): Promise<string | null> {
   if (mode === 'print') {
     const name = assetNameFromUrl(url);
-    const variant = name ? readCharacterAsset(projectId, printVariantName(name)) : null;
+    const variant = name ? await readCharacterAsset(projectId, printVariantName(name)) : null;
     if (variant) return `data:image/jpeg;base64,${variant.toString('base64')}`;
   }
-  const buf = readCharacterAsset(projectId, url);
+  const buf = await readCharacterAsset(projectId, url);
   if (!buf) return null;
   return `data:image/png;base64,${buf.toString('base64')}`;
 }
@@ -83,7 +83,7 @@ function rectsOverlap(a: LayoutSlot, b: LayoutSlot): boolean {
 
 // ---- 페이지 렌더 ------------------------------------------------------------
 
-function renderPage(project: Project, page: PageLayout, scene: Scene | undefined, mode: RenderMode): string {
+async function renderPage(project: Project, page: PageLayout, scene: Scene | undefined, mode: RenderMode): Promise<string> {
   const template = getTemplate(page.templateId);
   const imageSlots = template.slots.filter((s) => s.type === 'image');
   const parts: string[] = [];
@@ -91,7 +91,7 @@ function renderPage(project: Project, page: PageLayout, scene: Scene | undefined
   for (const slot of template.slots) {
     const data = page.slots.find((s) => s.slotId === slot.id);
     if (slot.type === 'image') {
-      const uri = data?.imageUrl ? imageDataUri(project.id, data.imageUrl, mode) : null;
+      const uri = data?.imageUrl ? await imageDataUri(project.id, data.imageUrl, mode) : null;
       const bg = uri ? `background-image:url('${uri}');` : '';
       const t = page.transform;
       const transform = t ? `background-size:${t.scale * 100}% auto;background-position:${50 + t.offsetX * 100}% ${50 + t.offsetY * 100}%;` : '';
@@ -192,17 +192,17 @@ body { font-family: "Pretendard", sans-serif; color: #2b2620; background: #fff;
 `;
 }
 
-export function renderBookHtml(project: Project, opts: RenderOptions): string {
+export async function renderBookHtml(project: Project, opts: RenderOptions): Promise<string> {
   const { mode, sceneNumbers, titlePage = true } = opts;
   const pages = project.layout.pages
     .filter((p) => !sceneNumbers || sceneNumbers.includes(p.sceneNumber))
     .sort((a, b) => a.sceneNumber - b.sceneNumber);
   const sceneByNumber = new Map(project.story.scenes.map((s) => [s.sceneNumber, s]));
 
-  const body = [
-    ...(titlePage ? [renderTitlePage(project, mode)] : []),
-    ...pages.map((p) => renderPage(project, p, sceneByNumber.get(p.sceneNumber), mode)),
-  ].join('\n');
+  const renderedPages = await Promise.all(
+    pages.map((p) => renderPage(project, p, sceneByNumber.get(p.sceneNumber), mode)),
+  );
+  const body = [...(titlePage ? [renderTitlePage(project, mode)] : []), ...renderedPages].join('\n');
 
   return `<!DOCTYPE html>
 <html lang="ko">
@@ -218,8 +218,8 @@ ${body}
 }
 
 /** HTML을 파일로 저장하고 경로를 반환한다. */
-export function writeBookHtml(project: Project, opts: RenderOptions, outFile: string): string {
+export async function writeBookHtml(project: Project, opts: RenderOptions, outFile: string): Promise<string> {
   fs.mkdirSync(path.dirname(outFile), { recursive: true });
-  fs.writeFileSync(outFile, renderBookHtml(project, opts), 'utf-8');
+  fs.writeFileSync(outFile, await renderBookHtml(project, opts), 'utf-8');
   return outFile;
 }

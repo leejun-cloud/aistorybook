@@ -16,6 +16,7 @@ import fs from 'fs';
 import path from 'path';
 import type { PreflightItem, PreflightResult, Project } from '../types';
 import { renderBookHtml } from '../render/html';
+import { renderWorkDir } from '../render/pdf';
 import { readCharacterAsset } from '../ai/character';
 import { assetNameFromUrl, printVariantName } from '../render/upscale';
 import { getProfile, type PrintProfile } from '../cover/profiles';
@@ -64,19 +65,36 @@ function imageSize(buf: Buffer): { width: number; height: number } | null {
 // Playwright (전역 설치본 — lib/render/pdf.ts와 같은 방식)
 // ---------------------------------------------------------------------------
 
-let cachedChromium: any = null;
-function loadChromium(): any {
-  if (cachedChromium) return cachedChromium;
-  const req = eval('require') as NodeRequire;
-  let chromium: any;
-  try {
-    ({ chromium } = req('playwright'));
-  } catch {
-    const globalRoot = execSync('npm root -g', { encoding: 'utf-8' }).trim();
-    ({ chromium } = req(path.join(globalRoot, 'playwright')));
+// Chromium 실행은 lib/render/pdf.ts와 같은 해석 순서 (Vercel 서버리스 / 로컬 / 전역)
+let cachedChromium: { chromium: any; serverless: any | null } | null = null;
+async function launchBrowser(): Promise<any> {
+  if (!cachedChromium) {
+    if (process.env.VERCEL) {
+      // 서버리스: 정적 분석 가능한 dynamic import — Vercel 파일 추적에 포함된다
+      const serverless = (await import('@sparticuz/chromium')).default;
+      const { chromium } = await import('playwright-core');
+      cachedChromium = { chromium, serverless };
+    } else {
+      const req = eval('require') as NodeRequire;
+      let chromium: any;
+      try {
+        ({ chromium } = req('playwright'));
+      } catch {
+        const globalRoot = execSync('npm root -g', { encoding: 'utf-8' }).trim();
+        ({ chromium } = req(path.join(globalRoot, 'playwright')));
+      }
+      cachedChromium = { chromium, serverless: null };
+    }
   }
-  cachedChromium = chromium;
-  return chromium;
+  const { chromium, serverless } = cachedChromium;
+  if (serverless) {
+    return chromium.launch({
+      args: serverless.args,
+      executablePath: await serverless.executablePath(),
+      headless: true,
+    });
+  }
+  return chromium.launch();
 }
 
 interface TextOverflow {
@@ -86,13 +104,11 @@ interface TextOverflow {
 
 /** 열람용 HTML을 실제로 열어 각 텍스트 슬롯의 넘침(px)을 측정한다. */
 async function measureTextOverflow(project: Project): Promise<TextOverflow[]> {
-  const html = renderBookHtml(project, { mode: 'view', titlePage: false });
-  const tmp = path.join(process.cwd(), 'projects', path.basename(project.id), 'output', 'preflight-measure.html');
-  fs.mkdirSync(path.dirname(tmp), { recursive: true });
+  const html = await renderBookHtml(project, { mode: 'view', titlePage: false });
+  const tmp = path.join(renderWorkDir(project.id), 'preflight-measure.html');
   fs.writeFileSync(tmp, html, 'utf-8');
 
-  const chromium = loadChromium();
-  const browser = await chromium.launch();
+  const browser = await launchBrowser();
   try {
     const page = await browser.newPage();
     await page.goto('file://' + tmp, { waitUntil: 'networkidle' });
@@ -160,7 +176,7 @@ function checkSafeArea(project: Project, profile: PrintProfile | null): Prefligh
   return { label: '안전영역 침범', passed: fails.length === 0, detail };
 }
 
-function checkImageResolution(project: Project): PreflightItem {
+async function checkImageResolution(project: Project): Promise<PreflightItem> {
   const problems: string[] = [];
   let checked = 0;
   for (const page of project.layout.pages) {
@@ -171,8 +187,8 @@ function checkImageResolution(project: Project): PreflightItem {
       if (!slotDef) continue;
       // 인쇄 렌더는 업스케일 변형본(@print.png)을 쓰므로, 있으면 그것을 기준으로 판정
       const name = assetNameFromUrl(slotData.imageUrl);
-      const variantBuf = name ? readCharacterAsset(project.id, printVariantName(name)) : null;
-      const buf = variantBuf ?? readCharacterAsset(project.id, slotData.imageUrl);
+      const variantBuf = name ? await readCharacterAsset(project.id, printVariantName(name)) : null;
+      const buf = variantBuf ?? (await readCharacterAsset(project.id, slotData.imageUrl));
       const size = buf ? imageSize(buf) : null;
       if (!size) {
         problems.push(`p${page.sceneNumber} 이미지 파일을 읽을 수 없음`);
@@ -200,14 +216,14 @@ function checkImageResolution(project: Project): PreflightItem {
   };
 }
 
-function checkFontEmbed(project: Project): PreflightItem {
+async function checkFontEmbed(project: Project): Promise<PreflightItem> {
   const fontsDir = path.join(process.cwd(), 'lib', 'render', 'fonts');
   const files = ['Pretendard-Regular.ttf', 'Pretendard-Bold.ttf'];
   const missing = files.filter((f) => !fs.existsSync(path.join(fontsDir, f)));
   if (missing.length) {
     return { label: '폰트 임베드', passed: false, detail: `폰트 파일 누락: ${missing.join(', ')}` };
   }
-  const html = renderBookHtml(project, { mode: 'print', sceneNumbers: [] });
+  const html = await renderBookHtml(project, { mode: 'print', sceneNumbers: [] });
   const hasFace = html.includes('@font-face') && html.includes('Pretendard-Regular.ttf');
   return {
     label: '폰트 임베드',
@@ -254,8 +270,8 @@ export async function runPreflight(project: Project, opts: PreflightOptions = {}
   }
 
   items.push(checkSafeArea(project, profile));
-  items.push(checkImageResolution(project));
-  items.push(checkFontEmbed(project));
+  items.push(await checkImageResolution(project));
+  items.push(await checkFontEmbed(project));
   const fmt = checkFormatProfile(profile);
   if (fmt) items.push(fmt);
 

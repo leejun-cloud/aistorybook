@@ -6,8 +6,8 @@ import { SaveReferenceButton } from '../components/SaveReferenceButton';
 
 export const dynamic = 'force-dynamic';
 
-export default function DashboardPage() {
-  const projects = listProjects();
+export default async function DashboardPage() {
+  const projects = await listProjects();
 
   return (
     <main className="mx-auto w-full max-w-4xl flex-1 overflow-y-auto px-6 py-10">

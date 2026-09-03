@@ -176,14 +176,14 @@ export interface SceneGenerationOptions extends ScenePromptOptions {
 }
 
 /** 이미 확정된(슬롯에 선택된) 가장 앞 페이지의 이미지 — 후속 장면의 스타일 앵커. */
-function findStyleAnchor(project: Project, currentSceneNumber: number): Buffer | null {
+async function findStyleAnchor(project: Project, currentSceneNumber: number): Promise<Buffer | null> {
   const pages = project.layout.pages
     .filter((p) => p.sceneNumber !== currentSceneNumber)
     .sort((a, b) => a.sceneNumber - b.sceneNumber);
   for (const page of pages) {
     const url = page.slots.find((s) => s.slotId === 'image-1')?.imageUrl;
     if (!url) continue;
-    const buf = readCharacterAsset(project.id, url);
+    const buf = await readCharacterAsset(project.id, url);
     if (buf) return buf;
   }
   return null;
@@ -216,16 +216,16 @@ export async function generateSceneImageCandidates(
   // 레퍼런스: 캐릭터 확정 레퍼런스(들) 먼저, 스타일 참고 이미지, 스타일 앵커(확정 페이지) 순.
   const refs: Buffer[] = [];
   for (const c of characters) {
-    const buf = c.referenceImageUrl ? readCharacterAsset(project.id, c.referenceImageUrl) : null;
+    const buf = c.referenceImageUrl ? await readCharacterAsset(project.id, c.referenceImageUrl) : null;
     if (buf) refs.push(buf);
   }
   if (project.character.style.source === 'upload') {
     for (const url of project.character.style.referenceImageUrls) {
-      const buf = readCharacterAsset(project.id, url);
+      const buf = await readCharacterAsset(project.id, url);
       if (buf) refs.push(buf);
     }
   }
-  const anchor = findStyleAnchor(project, scene.sceneNumber);
+  const anchor = await findStyleAnchor(project, scene.sceneNumber);
   if (anchor) refs.push(anchor);
 
   const promptOpts: ScenePromptOptions = { ...opts, hasStyleAnchor: !!anchor };
@@ -238,15 +238,16 @@ export async function generateSceneImageCandidates(
 
   const candidates: SceneImageCandidate[] = [];
   const failures: { index: number; error: GeminiError }[] = [];
-  results.forEach((r, i) => {
+  for (let i = 0; i < results.length; i++) {
+    const r = results[i];
     if (r.ok) {
       const name = `scene-${scene.sceneNumber}-cand-${i}${suffix}.png`;
-      const url = saveCharacterAsset(project.id, name, r.image.data);
+      const url = await saveCharacterAsset(project.id, name, r.image.data);
       candidates.push({ id: `scene-${scene.sceneNumber}-cand-${i}${suffix}`, url, upscaled: false });
     } else {
       failures.push({ index: i, error: r.error });
     }
-  });
+  }
 
   const ok = candidates.length > 0;
   const jobState = setJobState(project, scene.sceneNumber, {

@@ -18,14 +18,14 @@ export async function POST(req: NextRequest) {
   if (!projectId || typeof sceneNumber !== 'number') {
     return NextResponse.json({ error: 'projectId, sceneNumber가 필요합니다' }, { status: 400 });
   }
-  const project = loadProject(projectId) as ProjectWithSceneJobs | null;
+  const project = await loadProject(projectId) as ProjectWithSceneJobs | null;
   if (!project) return NextResponse.json({ error: 'project 없음' }, { status: 404 });
 
   const scene = project.story.scenes.find((s) => s.sceneNumber === sceneNumber);
   if (!scene) return NextResponse.json({ error: `장면 ${sceneNumber} 없음` }, { status: 404 });
 
   const result = await generateSceneCandidatesVerified(project, scene);
-  saveProject(project); // 실패해도 상태(failed, retryCount)를 남긴다
+  await saveProject(project); // 실패해도 상태(failed, retryCount)를 남긴다
 
   if (!result.ok) {
     return NextResponse.json(
@@ -52,7 +52,7 @@ export async function GET(req: NextRequest) {
   if (!projectId || !Number.isFinite(sceneNumber)) {
     return NextResponse.json({ error: 'projectId, sceneNumber가 필요합니다' }, { status: 400 });
   }
-  const project = loadProject(projectId) as ProjectWithSceneJobs | null;
+  const project = await loadProject(projectId) as ProjectWithSceneJobs | null;
   if (!project) return NextResponse.json({ error: 'project 없음' }, { status: 404 });
   const page = project.layout.pages.find((p) => p.sceneNumber === sceneNumber);
   return NextResponse.json({

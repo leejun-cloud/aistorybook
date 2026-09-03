@@ -9,9 +9,10 @@
 // 무겁다. 수채화·일러스트처럼 부드러운 화풍에서는 Lanczos3 리샘플 + 약한 샤픈이
 // 인쇄용 표준 처리로 충분하다.
 
-import fs from 'fs';
 import path from 'path';
+import sharp from 'sharp';
 import type { Project } from '../types';
+import { readStoredFile, storedFileMtime, writeStoredFile } from '../storage';
 
 // lib/render/html.ts 판형 상수와 동일 (수정 금지 미러링 — preflight/index.ts와 같은 방식)
 const TRIM_MM = 210;
@@ -21,18 +22,8 @@ const TARGET_DPI = 300;
 /** 풀블리드(트림+재단여분 216mm)를 300dpi로 채우는 픽셀 폭 */
 export const PRINT_TARGET_PX = Math.ceil(((TRIM_MM + 2 * BLEED_MM) / 25.4) * TARGET_DPI); // 2552
 
-// sharp는 네이티브 모듈 — Next.js 번들러가 정적 분석하지 않도록 eval('require')로
-// 로드한다 (lib/render/pdf.ts의 playwright 로더와 같은 패턴).
-let cachedSharp: any = null;
-function loadSharp(): any {
-  if (cachedSharp) return cachedSharp;
-  const req = eval('require') as NodeRequire;
-  cachedSharp = req('sharp');
-  return cachedSharp;
-}
-
-const assetsDir = (projectId: string) =>
-  path.join(process.cwd(), 'projects', path.basename(projectId), 'assets');
+const assetPath = (projectId: string, name: string) =>
+  `projects/${path.basename(projectId)}/assets/${path.basename(name)}`;
 
 /** /api/character/asset?...&name=<file> URL 또는 파일명 → 에셋 파일명 */
 export function assetNameFromUrl(nameOrUrl: string): string | null {
@@ -65,26 +56,32 @@ export async function ensurePrintVariant(projectId: string, nameOrUrl: string): 
   const name = assetNameFromUrl(nameOrUrl);
   if (!name) return { name: nameOrUrl, action: 'skipped', detail: '에셋명을 해석할 수 없음' };
 
-  const src = path.join(assetsDir(projectId), name);
-  if (!fs.existsSync(src)) return { name, action: 'skipped', detail: '원본 파일 없음' };
-
-  const variant = path.join(assetsDir(projectId), printVariantName(name));
-  if (fs.existsSync(variant) && fs.statSync(variant).mtimeMs >= fs.statSync(src).mtimeMs) {
+  const srcPath = assetPath(projectId, name);
+  const variantPath = assetPath(projectId, printVariantName(name));
+  const [srcMtime, variantMtime] = await Promise.all([
+    storedFileMtime(srcPath),
+    storedFileMtime(variantPath),
+  ]);
+  if (srcMtime === null) return { name, action: 'skipped', detail: '원본 파일 없음' };
+  if (variantMtime !== null && variantMtime >= srcMtime) {
     return { name, action: 'skipped', detail: '변형본이 이미 최신' };
   }
 
-  const sharp = loadSharp();
-  const meta = await sharp(src).metadata();
+  const srcBuf = await readStoredFile(srcPath);
+  if (!srcBuf) return { name, action: 'skipped', detail: '원본을 읽을 수 없음' };
+
+  const meta = await sharp(srcBuf).metadata();
   const width = meta.width ?? 0;
   if (width >= PRINT_TARGET_PX) {
     return { name, action: 'skipped', detail: `원본 ${width}px — 이미 목표(${PRINT_TARGET_PX}px) 이상` };
   }
 
-  await sharp(src)
+  const out: Buffer = await sharp(srcBuf)
     .resize(PRINT_TARGET_PX, PRINT_TARGET_PX, { kernel: 'lanczos3', fit: 'fill' })
     .sharpen({ sigma: 1 })
     .jpeg({ quality: 92, chromaSubsampling: '4:4:4' })
-    .toFile(variant);
+    .toBuffer();
+  await writeStoredFile(variantPath, out);
   return { name, action: 'upscaled', detail: `${width}px → ${PRINT_TARGET_PX}px (300dpi)` };
 }
 

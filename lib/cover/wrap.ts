@@ -18,7 +18,7 @@ import fs from 'fs';
 import path from 'path';
 import type { CoverTextLayout, Project } from '../types';
 import { readCharacterAsset } from '../ai/character';
-import { printHtmlToPdf } from '../render/pdf';
+import { persistOutput, printHtmlToPdf, renderWorkDir } from '../render/pdf';
 import { assetNameFromUrl, printVariantName } from '../render/upscale';
 import type { PrintProfile } from './profiles';
 import type { SpineResult } from './spine';
@@ -72,7 +72,7 @@ export function wrapCoverDimensions(profile: PrintProfile, spine: SpineResult, f
   };
 }
 
-export function renderWrapCoverHtml(project: Project, opts: WrapCoverOptions): { html: string; dims: WrapCoverDimensions } {
+export async function renderWrapCoverHtml(project: Project, opts: WrapCoverOptions): Promise<{ html: string; dims: WrapCoverDimensions }> {
   const { profile, spine, flaps = false } = opts;
   const dims = wrapCoverDimensions(profile, spine, flaps);
   const b = profile.bleed;
@@ -80,8 +80,8 @@ export function renderWrapCoverHtml(project: Project, opts: WrapCoverOptions): {
 
   // 인쇄물이므로 업스케일 변형본(@print.jpg)이 있으면 우선 사용
   const coverName = assetNameFromUrl(opts.coverImageUrl);
-  const variantBuf = coverName ? readCharacterAsset(project.id, printVariantName(coverName)) : null;
-  const buf = variantBuf ?? readCharacterAsset(project.id, opts.coverImageUrl);
+  const variantBuf = coverName ? await readCharacterAsset(project.id, printVariantName(coverName)) : null;
+  const buf = variantBuf ?? (await readCharacterAsset(project.id, opts.coverImageUrl));
   const coverUri = buf
     ? `data:image/${variantBuf ? 'jpeg' : 'png'};base64,${buf.toString('base64')}`
     : null;
@@ -183,12 +183,13 @@ export async function renderWrapCoverPdf(
   opts: WrapCoverOptions,
   outDir?: string,
 ): Promise<WrapCoverResult> {
-  const dir = outDir ?? path.join(process.cwd(), 'projects', path.basename(project.id), 'output');
+  const dir = outDir ?? renderWorkDir(project.id);
   fs.mkdirSync(dir, { recursive: true });
-  const { html, dims } = renderWrapCoverHtml(project, opts);
+  const { html, dims } = await renderWrapCoverHtml(project, opts);
   const htmlPath = path.join(dir, 'cover-wrap.html');
   const pdfPath = path.join(dir, 'cover-wrap.pdf');
   fs.writeFileSync(htmlPath, html, 'utf-8');
   await printHtmlToPdf(htmlPath, pdfPath);
+  await persistOutput(project.id, pdfPath, 'cover-wrap.pdf');
   return { htmlPath, pdfPath, dims };
 }

@@ -7,7 +7,7 @@ export async function GET(req: NextRequest) {
   const id = req.nextUrl.searchParams.get('id');
   const name = req.nextUrl.searchParams.get('name');
   if (!id || !name) return NextResponse.json({ error: 'id, name이 필요합니다' }, { status: 400 });
-  const data = readReferenceAsset(id, name);
+  const data = await readReferenceAsset(id, name);
   if (!data) return NextResponse.json({ error: '에셋 없음' }, { status: 404 });
   const mime = name.endsWith('.jpg') || name.endsWith('.jpeg') ? 'image/jpeg' : 'image/png';
   return new NextResponse(new Uint8Array(data), {

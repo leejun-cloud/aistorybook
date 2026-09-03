@@ -10,7 +10,7 @@ export async function POST(req: NextRequest) {
   const { projectId } = (await req.json().catch(() => ({}))) as { projectId?: string };
   if (!projectId) return NextResponse.json({ error: 'projectId 필수' }, { status: 400 });
 
-  const project = loadProject(projectId);
+  const project = await loadProject(projectId);
   if (!project) return NextResponse.json({ error: 'project 없음' }, { status: 404 });
   if (project.story.scenes.length === 0) {
     return NextResponse.json({ error: '장면이 없습니다. 먼저 초안을 생성하세요.' }, { status: 400 });
@@ -24,7 +24,7 @@ export async function POST(req: NextRequest) {
       checkedAt: new Date().toISOString(),
       items: result.items,
     };
-    saveProject(project);
+    await saveProject(project);
     return NextResponse.json({ story: project.story });
   } catch (e) {
     return NextResponse.json({ error: (e as Error).message }, { status: 502 });

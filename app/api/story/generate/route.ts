@@ -14,7 +14,7 @@ export async function POST(req: NextRequest) {
       { status: 400 },
     );
   }
-  const project = loadProject(projectId);
+  const project = await loadProject(projectId);
   if (!project) return NextResponse.json({ error: 'project 없음' }, { status: 404 });
 
   try {
@@ -63,7 +63,7 @@ export async function POST(req: NextRequest) {
       ],
     }));
     project.layout.approved = false;
-    saveProject(project);
+    await saveProject(project);
     return NextResponse.json({ story: project.story });
   } catch (e) {
     return NextResponse.json({ error: (e as Error).message }, { status: 502 });

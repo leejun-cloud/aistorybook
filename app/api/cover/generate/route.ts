@@ -12,7 +12,7 @@ const CONCEPTS: CoverConcept[] = ['character', 'scene', 'symbol'];
 export async function POST(req: NextRequest) {
   const { projectId, concepts } = await req.json().catch(() => ({}));
   if (!projectId) return NextResponse.json({ error: 'projectId가 필요합니다' }, { status: 400 });
-  const project = loadProject(projectId);
+  const project = await loadProject(projectId);
   if (!project) return NextResponse.json({ error: 'project 없음' }, { status: 404 });
 
   const wanted: CoverConcept[] = Array.isArray(concepts)
@@ -21,7 +21,7 @@ export async function POST(req: NextRequest) {
   if (wanted.length === 0) return NextResponse.json({ error: '유효한 concept이 없습니다' }, { status: 400 });
 
   const result = await generateCoverOptions(project, wanted);
-  saveProject(project);
+  await saveProject(project);
 
   if (!result.ok) {
     return NextResponse.json({ error: '표지 생성 전량 실패', failures: result.failures }, { status: 502 });

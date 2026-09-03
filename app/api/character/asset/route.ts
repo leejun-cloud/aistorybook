@@ -10,7 +10,7 @@ export async function GET(req: NextRequest) {
   if (!projectId || !name) {
     return NextResponse.json({ error: 'projectId, name이 필요합니다' }, { status: 400 });
   }
-  const data = readCharacterAsset(projectId, name);
+  const data = await readCharacterAsset(projectId, name);
   if (!data) return NextResponse.json({ error: '에셋 없음' }, { status: 404 });
   return new NextResponse(new Uint8Array(data), {
     headers: { 'Content-Type': 'image/png', 'Cache-Control': 'no-store' },

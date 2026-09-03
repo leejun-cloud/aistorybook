@@ -142,7 +142,7 @@ export async function checkCandidatesConsistency(
 ): Promise<CandidateConsistency[]> {
   const out: CandidateConsistency[] = [];
   for (const cand of candidates) {
-    const buf = readCharacterAsset(project.id, cand.url);
+    const buf = await readCharacterAsset(project.id, cand.url);
     if (!buf) {
       out.push({
         candidateId: cand.id,

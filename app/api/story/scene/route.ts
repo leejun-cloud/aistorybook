@@ -13,7 +13,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'projectId, sceneNumber, note 필수' }, { status: 400 });
   }
 
-  const project = loadProject(projectId);
+  const project = await loadProject(projectId);
   if (!project) return NextResponse.json({ error: 'project 없음' }, { status: 404 });
 
   const idx = project.story.scenes.findIndex((s) => s.sceneNumber === sceneNumber);
@@ -30,7 +30,7 @@ export async function POST(req: NextRequest) {
   try {
     const revised = await regenerateScene(scene, note, project.story.scenes);
     project.story.scenes[idx] = revised;
-    saveProject(project);
+    await saveProject(project);
     return NextResponse.json({ scene: revised });
   } catch (e) {
     return NextResponse.json({ error: (e as Error).message }, { status: 502 });

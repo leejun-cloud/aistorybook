@@ -16,13 +16,13 @@ export async function POST(req: NextRequest) {
       { status: 400 },
     );
   }
-  const project = loadProject(projectId);
+  const project = await loadProject(projectId);
   if (!project) return NextResponse.json({ error: 'project 없음' }, { status: 404 });
   const character = project.character.characters.find((c) => c.id === characterId);
   if (!character) return NextResponse.json({ error: 'character 없음' }, { status: 404 });
   const base = character.candidates.find((c) => c.id === candidateId);
   if (!base) return NextResponse.json({ error: 'candidate 없음' }, { status: 404 });
-  const baseImage = readCharacterAsset(projectId, base.imageUrl);
+  const baseImage = await readCharacterAsset(projectId, base.imageUrl);
   if (!baseImage) return NextResponse.json({ error: '후보 이미지 파일 없음' }, { status: 404 });
 
   const result = await refineCharacter(baseImage, instruction);
@@ -31,10 +31,10 @@ export async function POST(req: NextRequest) {
   }
 
   const refinedId = `${candidateId}-r${Date.now().toString(36)}`;
-  const url = saveCharacterAsset(projectId, `${refinedId}.png`, result.image);
+  const url = await saveCharacterAsset(projectId, `${refinedId}.png`, result.image);
   const refined = { id: refinedId, imageUrl: url, note: `부분 수정: ${instruction}` };
   character.candidates.push(refined);
-  saveProject(project);
+  await saveProject(project);
 
   return NextResponse.json({ candidate: refined });
 }

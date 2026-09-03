@@ -37,7 +37,7 @@ async function main() {
   fs.mkdirSync(OUT_DIR, { recursive: true });
   const record: any = { ranAt: new Date().toISOString(), projectId: PROJECT_ID, imageCalls: 0, visionCalls: 0 };
 
-  const project = loadProject(PROJECT_ID);
+  const project = await loadProject(PROJECT_ID);
   if (!project) throw new Error(`프로젝트 없음: ${PROJECT_ID}`);
   const scene3 = project.story.scenes.find((s) => s.sceneNumber === 3)!;
 
@@ -45,7 +45,7 @@ async function main() {
   console.log('0) DNA 일관성 검사 — scene-3-cand-1(의상 누출) / scene-3-cand-0(정상)');
   record.consistency = {};
   for (const name of ['scene-3-cand-1.png', 'scene-3-cand-0.png']) {
-    const buf = readCharacterAsset(PROJECT_ID, name);
+    const buf = await readCharacterAsset(PROJECT_ID, name);
     if (!buf) throw new Error(`에셋 없음: ${name}`);
     const res = await checkSceneConsistency(project, scene3, buf);
     record.visionCalls++;
@@ -64,7 +64,7 @@ async function main() {
   const page2 = project.layout.pages.find((p) => p.sceneNumber === 2)!;
   page2.transform = { scale: 1.3, offsetX: 0.1, offsetY: 0 };
   record.slotEdit = { sceneNumber: 2, transform: page2.transform };
-  saveProject(project);
+  await saveProject(project);
 
   // ---- 2) 표지 3방향 생성 (이미지 호출 3회) --------------------------------
   const hasCovers = project.publish.coverOptions.every((c) => c.imageUrl);
@@ -77,7 +77,7 @@ async function main() {
       generated: cov.options.map((o) => ({ concept: o.concept, url: o.imageUrl })),
       failures: cov.failures.length,
     };
-    saveProject(project);
+    await saveProject(project);
   } else {
     console.log('2) 표지 이미 있음 — 생성 건너뜀 (--fresh로 강제)');
     record.coverGeneration = 'skipped (already generated)';
@@ -131,7 +131,7 @@ async function main() {
   console.log(`   종합: ${preflight.passed ? 'PASS' : 'FAIL'}`);
 
   project.publish.outputs.printCoverPdfUrl = `/api/cover/render?projectId=${PROJECT_ID}`;
-  saveProject(project);
+  await saveProject(project);
 
   fs.writeFileSync(path.join(process.cwd(), 'tests', 'publish', 'run-record.json'), JSON.stringify(record, null, 2));
   console.log(`\n완료 — 이미지 호출 ${record.imageCalls}회, vision 호출 ${record.visionCalls}회`);
