@@ -277,6 +277,13 @@ export function CharacterClient() {
                   </button>
                 )}
               </div>
+              {project.character.characters.some((c) => !c.confirmed) && (
+                <p className="mb-2 text-[11px] text-gray-400">
+                  1장씩 빠르게 만들어 바로 확정합니다. 마음에 안 드는 인물만 "다른 디자인 4개 보기"로 다시
+                  고르면 됩니다 — 손가락 개수처럼 미세한 부분은 그림 생성 자체의 한계라 재생성이 더 빠른
+                  해결책입니다.
+                </p>
+              )}
               <div className="space-y-1">
                 {project.character.characters.map((c) => (
                   <button

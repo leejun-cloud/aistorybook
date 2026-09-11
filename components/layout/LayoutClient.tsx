@@ -315,15 +315,21 @@ export function LayoutClient() {
       )}
 
       {!noPageHasImage && firstPageHasAnyImage && draftProgress === null && draftPageCount > 0 && (
-        <div className="flex items-center justify-between border-b border-amber-100 bg-amber-50 px-6 py-2 text-xs text-gray-700">
-          <span>1페이지 미리보기가 준비됐어요. 이 분위기가 마음에 들면 나머지 페이지도 빠르게 미리보기로 채워보세요.</span>
-          <button
-            onClick={draftAllRemaining}
-            disabled={busy !== null}
-            className="ml-3 shrink-0 rounded border border-amber-400 px-2 py-1 font-semibold text-amber-700 hover:bg-amber-100 disabled:opacity-50"
-          >
-            나머지 페이지 미리보기로 채우기
-          </button>
+        <div className="border-b border-amber-100 bg-amber-50 px-6 py-2 text-xs text-gray-700">
+          <div className="flex items-center justify-between">
+            <span>1페이지 미리보기가 준비됐어요. 이 분위기가 마음에 들면 나머지 페이지도 빠르게 미리보기로 채워보세요.</span>
+            <button
+              onClick={draftAllRemaining}
+              disabled={busy !== null}
+              className="ml-3 shrink-0 rounded border border-amber-400 px-2 py-1 font-semibold text-amber-700 hover:bg-amber-100 disabled:opacity-50"
+            >
+              나머지 페이지 미리보기로 채우기
+            </button>
+          </div>
+          <p className="mt-1 text-[11px] text-gray-500">
+            미리보기는 인물 일관성(DNA) 검사 없이 빠르게 그린 임시 그림입니다. 인물이 페이지마다 조금씩 달라
+            보일 수 있는데, "고화질로 완성" 단계에서 자동으로 검증·보정됩니다.
+          </p>
         </div>
       )}
 
@@ -466,7 +472,8 @@ export function LayoutClient() {
                 </button>
               </div>
               <p className="text-[11px] text-gray-500">
-                후보 비교·DNA 검증 없이 1장만 빠르게 만들어 분위기를 확인합니다. 마음에 안 들면 다시 눌러보세요.
+                후보 비교·DNA 검증 없이 1장만 빠르게 만들어 분위기를 확인합니다. 인물이 다른 페이지와 살짝
+                달라 보여도 정상입니다 — "고화질로 완성" 시 자동 보정됩니다. 마음에 안 들면 다시 눌러보세요.
               </p>
             </div>
 
