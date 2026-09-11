@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import { loadProject, saveProject } from '../../../../lib/store';
 import { regenerateScene } from '../../../../lib/ai/story';
 
+export const maxDuration = 120;
+
 // POST /api/story/scene
 // body: { projectId, sceneNumber, note }
 // "이 장면 다시" — 사용자 지시(note)를 반영해 해당 장면만 재생성한다.

@@ -2,6 +2,9 @@ import { NextRequest, NextResponse } from 'next/server';
 import { loadProject, saveProject } from '../../../../lib/store';
 import { runQualityGate } from '../../../../lib/ai/story';
 
+// 채점 + self-repair 최대 2회(각 라운드가 채점 재호출 포함)라 오래 걸릴 수 있다.
+export const maxDuration = 300;
+
 // POST /api/story/gate
 // body: { projectId }
 // 프로젝트의 현재 장면을 통과 기준 5종으로 채점 → 미달 시 AI self-repair 1회 →

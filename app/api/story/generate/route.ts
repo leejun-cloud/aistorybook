@@ -3,6 +3,10 @@ import { loadProject, saveProject } from '../../../../lib/store';
 import { generateStoryDraft, loadPatternLibrary, selectPatterns } from '../../../../lib/ai/story';
 import { seedCastCharacters, rebuildLayoutPages } from '../../../../lib/story-apply';
 
+// best-of-N(기본 2) + 초안별 self-repair 최대 3회라 3~4분까지 걸릴 수 있다 —
+// 이게 없으면 Vercel 서버리스 함수가 기본 제한 시간에 중간에 끊긴다.
+export const maxDuration = 300;
+
 // POST /api/story/generate
 // body: { projectId, idea, targetAge, sceneCount(4~40 정수), desiredMood, patternIds? }
 // patternIds가 없으면 AI가 어울리는 패턴 1~2개를 자동 선택한다 (PRD §1.2).
