@@ -35,6 +35,9 @@ export function PublishClient() {
   const [pageCount, setPageCount] = useState<number>(32);
   const [flaps, setFlaps] = useState(false);
   const [author, setAuthor] = useState('');
+  // 규격 기본값(부크크2·무선제본·백색모조100g·32p)이 "그림책 표준" — 대부분은 안 건드리고
+  // 바로 다음으로 넘어가도록 세부 설정을 접어둔다.
+  const [showAdvancedSpec, setShowAdvancedSpec] = useState(false);
   const [spineInfo, setSpineInfo] = useState<{ spineMm: number; canFitSpineText: boolean; warnings: string[] } | null>(null);
 
   if (loading) return <div className="p-8 text-gray-400">불러오는 중…</div>;
@@ -205,45 +208,61 @@ export function PublishClient() {
               표지 상세 편집 (미리보기·책등 글·글자 위치) →
             </a>
           </div>
-          <div className="grid grid-cols-2 gap-3 text-sm">
-            <label className="block text-xs text-gray-500">
-              출판 프로파일
-              <select value={profileId} onChange={(e) => setProfileId(e.target.value)} className="mt-1 w-full rounded border border-gray-300 p-1.5">
-                {PROFILE_CHOICES.map(([id, label]) => <option key={id} value={id}>{label}</option>)}
-              </select>
-            </label>
-            <label className="block text-xs text-gray-500">
-              제본 방식
-              <select value={binding} onChange={(e) => setBinding(e.target.value)} className="mt-1 w-full rounded border border-gray-300 p-1.5">
-                {BINDING_CHOICES.map(([id, label]) => <option key={id} value={id}>{label}</option>)}
-              </select>
-            </label>
-            <label className="block text-xs text-gray-500">
-              내지 종이
-              <select value={paperName} onChange={(e) => setPaperName(e.target.value)} className="mt-1 w-full rounded border border-gray-300 p-1.5">
-                {PAPER_CHOICES.map((p) => <option key={p} value={p}>{p}</option>)}
-              </select>
-            </label>
-            <label className="block text-xs text-gray-500">
-              총 페이지 수
-              <input
-                type="number" min={4} value={pageCount}
-                onChange={(e) => setPageCount(Number(e.target.value))}
-                className="mt-1 w-full rounded border border-gray-300 p-1.5"
-              />
-            </label>
-            <label className="block text-xs text-gray-500">
-              작가명 (표지 텍스트)
-              <input
-                type="text" value={author} onChange={(e) => setAuthor(e.target.value)}
-                className="mt-1 w-full rounded border border-gray-300 p-1.5" placeholder="선택"
-              />
-            </label>
-            <label className="flex items-end gap-2 pb-1 text-xs text-gray-500">
-              <input type="checkbox" checked={flaps} onChange={(e) => setFlaps(e.target.checked)} />
-              날개 포함 (좌우 각 100mm)
-            </label>
-          </div>
+
+          {!showAdvancedSpec ? (
+            <div className="flex items-center justify-between rounded-lg bg-gray-50 p-3 text-xs text-gray-600">
+              <span>
+                <span className="font-semibold text-gray-700">그림책 표준</span> — 부크크2(B5) · 무선제본 · 백색모조
+                100g · {pageCount}p
+              </span>
+              <button
+                onClick={() => setShowAdvancedSpec(true)}
+                className="rounded border border-gray-300 px-2 py-1 text-gray-600 hover:border-gray-400"
+              >
+                직접 설정
+              </button>
+            </div>
+          ) : (
+            <div className="grid grid-cols-2 gap-3 text-sm">
+              <label className="block text-xs text-gray-500">
+                출판 프로파일
+                <select value={profileId} onChange={(e) => setProfileId(e.target.value)} className="mt-1 w-full rounded border border-gray-300 p-1.5">
+                  {PROFILE_CHOICES.map(([id, label]) => <option key={id} value={id}>{label}</option>)}
+                </select>
+              </label>
+              <label className="block text-xs text-gray-500">
+                제본 방식
+                <select value={binding} onChange={(e) => setBinding(e.target.value)} className="mt-1 w-full rounded border border-gray-300 p-1.5">
+                  {BINDING_CHOICES.map(([id, label]) => <option key={id} value={id}>{label}</option>)}
+                </select>
+              </label>
+              <label className="block text-xs text-gray-500">
+                내지 종이
+                <select value={paperName} onChange={(e) => setPaperName(e.target.value)} className="mt-1 w-full rounded border border-gray-300 p-1.5">
+                  {PAPER_CHOICES.map((p) => <option key={p} value={p}>{p}</option>)}
+                </select>
+              </label>
+              <label className="block text-xs text-gray-500">
+                총 페이지 수
+                <input
+                  type="number" min={4} value={pageCount}
+                  onChange={(e) => setPageCount(Number(e.target.value))}
+                  className="mt-1 w-full rounded border border-gray-300 p-1.5"
+                />
+              </label>
+              <label className="flex items-end gap-2 pb-1 text-xs text-gray-500">
+                <input type="checkbox" checked={flaps} onChange={(e) => setFlaps(e.target.checked)} />
+                날개 포함 (좌우 각 100mm)
+              </label>
+            </div>
+          )}
+          <label className="mt-3 block text-xs text-gray-500">
+            작가명 (표지 텍스트)
+            <input
+              type="text" value={author} onChange={(e) => setAuthor(e.target.value)}
+              className="mt-1 w-full max-w-xs rounded border border-gray-300 p-1.5" placeholder="선택"
+            />
+          </label>
           {spineInfo && (
             <div className="mt-3 rounded-lg bg-gray-50 p-3 text-xs text-gray-600">
               책등 {spineInfo.spineMm}mm · 책등 텍스트 {spineInfo.canFitSpineText ? '가능' : '생략(5mm 미만)'}

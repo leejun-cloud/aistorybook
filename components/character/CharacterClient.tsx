@@ -16,6 +16,7 @@ export function CharacterClient() {
   const [newDesc, setNewDesc] = useState('');
   const [refineNote, setRefineNote] = useState('');
   const [copyrightOk, setCopyrightOk] = useState(false);
+  const [showMoreStyles, setShowMoreStyles] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
 
   if (loading) return <div className="p-8 text-gray-400">불러오는 중…</div>;
@@ -23,6 +24,18 @@ export function CharacterClient() {
   const character =
     project.character.characters.find((c) => c.id === selectedCharId) ?? project.character.characters[0];
   const hasConfirmed = project.character.characters.some((c) => c.confirmed && c.referenceImageUrl);
+
+  // 선택지 과부하 방지: 12종(기본6+출판사례6)+업로드 전부를 한 화면에 펼치는 대신
+  // 다양성 있는 대표 4개만 먼저 보여주고 나머지는 "더 보기"로 접는다.
+  const TOP_STYLE_IDS = new Set(['watercolor', 'gouache', '3d-soft', 'published:nordic-flat']);
+  const topLibrary = STYLE_LIBRARY.filter((s) => TOP_STYLE_IDS.has(s.id));
+  const restLibrary = STYLE_LIBRARY.filter((s) => !TOP_STYLE_IDS.has(s.id));
+  const topPublished = PUBLISHED_STYLE_PRESETS.filter((s) => TOP_STYLE_IDS.has(`published:${s.id}`));
+  const restPublished = PUBLISHED_STYLE_PRESETS.filter((s) => !TOP_STYLE_IDS.has(`published:${s.id}`));
+  const currentStyleIsHidden =
+    project.character.style.source === 'library' &&
+    !!project.character.style.libraryStyleId &&
+    !TOP_STYLE_IDS.has(project.character.style.libraryStyleId);
 
   const call = async (label: string, url: string, body: object): Promise<Record<string, unknown> | null> => {
     setBusy(label);
@@ -253,9 +266,17 @@ export function CharacterClient() {
             </div>
 
             <div>
-              <div className="mb-2 text-xs font-semibold text-gray-500">기본 스타일 라이브러리</div>
+              <div className="mb-2 flex items-center justify-between">
+                <div className="text-xs font-semibold text-gray-500">스타일</div>
+                <button
+                  onClick={() => setShowMoreStyles((v) => !v)}
+                  className="rounded border border-gray-200 px-2 py-0.5 text-[11px] text-gray-500 hover:border-gray-300"
+                >
+                  {showMoreStyles ? '접기' : '더 보기'}
+                </button>
+              </div>
               <div className="space-y-1">
-                {STYLE_LIBRARY.map((s) => (
+                {topLibrary.map((s) => (
                   <button
                     key={s.id}
                     onClick={() => chooseLibraryStyle(s.id)}
@@ -270,13 +291,7 @@ export function CharacterClient() {
                     <div className="text-gray-500">{s.description}</div>
                   </button>
                 ))}
-              </div>
-
-              <div className="mb-2 mt-4 text-xs font-semibold text-gray-500">
-                출판 사례 스타일 (분위기·이미지·조판 복제)
-              </div>
-              <div className="space-y-1">
-                {PUBLISHED_STYLE_PRESETS.map((s) => (
+                {topPublished.map((s) => (
                   <button
                     key={s.id}
                     onClick={() => choosePublishedPreset(s.id)}
@@ -288,46 +303,104 @@ export function CharacterClient() {
                         : 'border-gray-200 hover:border-gray-300',
                     ].join(' ')}
                   >
-                    <div className="font-semibold">{s.name}</div>
+                    <div className="font-semibold">{s.name} <span className="text-[10px] text-gray-400">(출판 사례)</span></div>
                     <div className="text-gray-500">{s.description}</div>
-                    <div className="mt-0.5 text-[10px] text-gray-400">
-                      분위기: {s.mood} · 글 {s.textBox === 'none' ? '상자 없음' : '반투명 상자'}
-                    </div>
                   </button>
                 ))}
-              </div>
-              <p className="mt-1 text-[10px] text-gray-400">
-                검증된 그림책 미학 계열을 스타일 특성으로만 서술한 프리셋 — 특정 출판본의 그림을 직접
-                참조하려면 아래 업로드를 사용하세요.
-              </p>
-
-              <div className="mt-3 space-y-2 rounded-lg border border-dashed border-gray-300 p-2 text-xs">
-                <div className="font-semibold text-gray-500">참고 그림 업로드 (1~3장)</div>
-                {project.character.style.source === 'upload' && (
-                  <div className="text-[11px] text-green-600">
-                    업로드 스타일 사용 중 — {project.character.style.description.slice(0, 60)}…
+                {currentStyleIsHidden && !showMoreStyles && (
+                  <div className="rounded-lg border border-brand-300 bg-brand-50 p-2 text-xs">
+                    <div className="font-semibold">
+                      현재 선택: {[...STYLE_LIBRARY, ...PUBLISHED_STYLE_PRESETS].find(
+                        (s) => s.id === project.character.style.libraryStyleId || `published:${s.id}` === project.character.style.libraryStyleId,
+                      )?.name}
+                    </div>
                   </div>
                 )}
-                <label className="flex items-start gap-1.5 text-[11px] text-gray-500">
-                  <input
-                    type="checkbox"
-                    checked={copyrightOk}
-                    onChange={(e) => setCopyrightOk(e.target.checked)}
-                    className="mt-0.5"
-                  />
-                  <span>업로드 그림의 스타일만 참고하며, 원작 캐릭터·구도를 복제하지 않는 것에 동의합니다</span>
-                </label>
-                <input
-                  ref={fileRef}
-                  type="file"
-                  accept="image/*"
-                  multiple
-                  disabled={busy !== null || !isPersisted || !copyrightOk}
-                  onChange={(e) => uploadStyle(e.target.files)}
-                  className="w-full text-[11px]"
-                />
-                {busy === '스타일 추출' && <div className="text-brand-600">스타일 분석 중…</div>}
               </div>
+
+              {showMoreStyles && (
+                <>
+                  {restLibrary.length > 0 && (
+                    <>
+                      <div className="mb-2 mt-4 text-xs font-semibold text-gray-500">기본 스타일 라이브러리</div>
+                      <div className="space-y-1">
+                        {restLibrary.map((s) => (
+                          <button
+                            key={s.id}
+                            onClick={() => chooseLibraryStyle(s.id)}
+                            className={[
+                              'w-full rounded-lg border p-2 text-left text-xs',
+                              project.character.style.libraryStyleId === s.id && project.character.style.source === 'library'
+                                ? 'border-brand-400 bg-brand-50'
+                                : 'border-gray-200 hover:border-gray-300',
+                            ].join(' ')}
+                          >
+                            <div className="font-semibold">{s.name}</div>
+                            <div className="text-gray-500">{s.description}</div>
+                          </button>
+                        ))}
+                      </div>
+                    </>
+                  )}
+
+                  <div className="mb-2 mt-4 text-xs font-semibold text-gray-500">
+                    출판 사례 스타일 (분위기·이미지·조판 복제)
+                  </div>
+                  <div className="space-y-1">
+                    {restPublished.map((s) => (
+                      <button
+                        key={s.id}
+                        onClick={() => choosePublishedPreset(s.id)}
+                        className={[
+                          'w-full rounded-lg border p-2 text-left text-xs',
+                          project.character.style.libraryStyleId === `published:${s.id}` &&
+                          project.character.style.source === 'library'
+                            ? 'border-brand-400 bg-brand-50'
+                            : 'border-gray-200 hover:border-gray-300',
+                        ].join(' ')}
+                      >
+                        <div className="font-semibold">{s.name}</div>
+                        <div className="text-gray-500">{s.description}</div>
+                        <div className="mt-0.5 text-[10px] text-gray-400">
+                          분위기: {s.mood} · 글 {s.textBox === 'none' ? '상자 없음' : '반투명 상자'}
+                        </div>
+                      </button>
+                    ))}
+                  </div>
+                  <p className="mt-1 text-[10px] text-gray-400">
+                    검증된 그림책 미학 계열을 스타일 특성으로만 서술한 프리셋 — 특정 출판본의 그림을 직접
+                    참조하려면 아래 업로드를 사용하세요.
+                  </p>
+
+                  <div className="mt-3 space-y-2 rounded-lg border border-dashed border-gray-300 p-2 text-xs">
+                    <div className="font-semibold text-gray-500">참고 그림 업로드 (1~3장)</div>
+                    {project.character.style.source === 'upload' && (
+                      <div className="text-[11px] text-green-600">
+                        업로드 스타일 사용 중 — {project.character.style.description.slice(0, 60)}…
+                      </div>
+                    )}
+                    <label className="flex items-start gap-1.5 text-[11px] text-gray-500">
+                      <input
+                        type="checkbox"
+                        checked={copyrightOk}
+                        onChange={(e) => setCopyrightOk(e.target.checked)}
+                        className="mt-0.5"
+                      />
+                      <span>업로드 그림의 스타일만 참고하며, 원작 캐릭터·구도를 복제하지 않는 것에 동의합니다</span>
+                    </label>
+                    <input
+                      ref={fileRef}
+                      type="file"
+                      accept="image/*"
+                      multiple
+                      disabled={busy !== null || !isPersisted || !copyrightOk}
+                      onChange={(e) => uploadStyle(e.target.files)}
+                      className="w-full text-[11px]"
+                    />
+                    {busy === '스타일 추출' && <div className="text-brand-600">스타일 분석 중…</div>}
+                  </div>
+                </>
+              )}
             </div>
           </div>
         }

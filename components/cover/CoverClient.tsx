@@ -9,6 +9,7 @@ import { useProject } from '../../lib/useProject';
 import type { CoverTextLayout } from '../../lib/types';
 import { getProfile, getInteriorPaper, type Binding } from '../../lib/cover/profiles';
 import { calculateSpine } from '../../lib/cover/spine';
+import { COVER_DESIGN_META, recommendCoverDesign } from '../../lib/cover/design-meta';
 
 const PROFILE_CHOICES = [
   ['bookk-1', '부크크1 · A5 148×210'],
@@ -29,6 +30,20 @@ const BINDING_CHOICES = [
 
 const PAPER_CHOICES = ['백색모조 80g', '백색모조 100g', '이라이트 80g', '스노우지 100g', '아트지 150g'];
 
+// 미리보기용 CSS 근사 — 실제 렌더(Typst)는 lib/cover/designs.ts가 정본. 여기서는
+// 6종 디자인의 특징(비네트/배너/프레임/글로우/코너/리본)을 가볍게 흉내만 낸다.
+const DESIGN_PREVIEW: Record<
+  string,
+  { overlay?: 'top' | 'bottom'; band?: boolean; frame?: boolean; ribbon?: boolean; defaultTitleY: number; defaultAuthorY: number }
+> = {
+  'classic-vignette': { overlay: 'top', defaultTitleY: 9, defaultAuthorY: 28 },
+  'bottom-banner': { band: true, defaultTitleY: 82, defaultAuthorY: 91 },
+  'minimal-frame': { frame: true, defaultTitleY: 87, defaultAuthorY: 94 },
+  'warm-glow-lower': { overlay: 'bottom', defaultTitleY: 68, defaultAuthorY: 82 },
+  'ornate-corner': { overlay: 'top', defaultTitleY: 11, defaultAuthorY: 30 },
+  'side-ribbon': { ribbon: true, defaultTitleY: 12, defaultAuthorY: 88 },
+};
+
 export function CoverClient() {
   const { project, setProject, loading, saving, isPersisted, save } = useProject();
   const [profileId, setProfileId] = useState('bookk-2');
@@ -37,10 +52,17 @@ export function CoverClient() {
   const [pageCount, setPageCount] = useState<number>(32);
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
+  const [showGallery, setShowGallery] = useState(false);
 
   if (loading) return <div className="p-8 text-gray-400">불러오는 중…</div>;
 
   const layout: CoverTextLayout = project.publish.coverLayout ?? {};
+  const recommendedDesignId = recommendCoverDesign(
+    project.character.style.source,
+    project.character.style.libraryStyleId,
+  );
+  const designId = layout.designId ?? recommendedDesignId;
+  const preview = DESIGN_PREVIEW[designId] ?? DESIGN_PREVIEW['classic-vignette'];
   const selected =
     project.publish.coverOptions.find((c) => c.id === project.publish.selectedCoverId && c.imageUrl) ??
     project.publish.coverOptions.find((c) => c.imageUrl);
@@ -59,17 +81,24 @@ export function CoverClient() {
   const author = layout.authorText?.trim() || '';
   const spineLabel = layout.spineText?.trim() || title;
   const blurb = layout.backBlurb?.trim() || project.story.scenes[0]?.text || '';
-  const titleYPct = layout.titleYPct ?? 7;
-  const authorYPct = layout.authorYPct ?? 88;
+  const titleYPct = layout.titleYPct ?? preview.defaultTitleY;
+  const authorYPct = layout.authorYPct ?? preview.defaultAuthorY;
   const titleSizePt = layout.titleSizePt ?? 26;
   const authorSizePt = layout.authorSizePt ?? 12;
-  const titleColor = layout.titleColor ?? '#3a2f21';
+  const titleColor = layout.titleColor ?? (preview.ribbon || preview.overlay ? '#ffffff' : '#3a2f21');
 
   const patchLayout = (patch: Partial<CoverTextLayout>) => {
     setProject((prev) => ({
       ...prev,
       publish: { ...prev.publish, coverLayout: { ...(prev.publish.coverLayout ?? {}), ...patch } },
     }));
+  };
+
+  // 다른 디자인 선택 시 이전 디자인용으로 수동 조절했던 위치·색은 초기화해
+  // 새 디자인의 기본값을 그대로 보여준다 (안 그러면 디자인이 바뀌어도 텍스트가 안 움직여 보임)
+  const selectDesign = (id: string) => {
+    patchLayout({ designId: id, titleYPct: undefined, authorYPct: undefined, titleColor: undefined });
+    setShowGallery(false);
   };
 
   const selectCover = (id: string) => {
@@ -203,35 +232,57 @@ export function CoverClient() {
                 </div>
               )}
             </div>
-            {/* 앞표지 */}
+            {/* 앞표지 — 6종 디자인의 특징(비네트/배너/프레임/글로우/리본)을 CSS로 근사 미리보기 */}
             <div className="relative overflow-hidden" style={{ width: profile.trim.width * s, height: H }}>
-              {selected?.imageUrl ? (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img src={selected.imageUrl} alt="표지" className="absolute inset-0 h-full w-full object-cover" />
-              ) : (
-                <div className="absolute inset-0 flex items-center justify-center bg-[#e8dcc8] text-xs text-gray-500">
-                  표지 이미지 없음 — 조절·인쇄에서 생성
-                </div>
+              <div
+                className="absolute overflow-hidden"
+                style={
+                  preview.frame
+                    ? { inset: '6% 6%', border: '1px solid rgba(0,0,0,0.5)' }
+                    : preview.ribbon
+                      ? { left: '38%', right: 0, top: 0, bottom: 0 }
+                      : { inset: 0 }
+                }
+              >
+                {selected?.imageUrl ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img src={selected.imageUrl} alt="표지" className="absolute inset-0 h-full w-full object-cover" />
+                ) : (
+                  <div className="absolute inset-0 flex items-center justify-center bg-[#e8dcc8] text-xs text-gray-500">
+                    표지 이미지 없음
+                  </div>
+                )}
+              </div>
+              {preview.overlay === 'top' && (
+                <div className="absolute inset-x-0 top-0 h-[42%] bg-gradient-to-b from-black/55 to-transparent" />
+              )}
+              {preview.overlay === 'bottom' && (
+                <div className="absolute inset-x-0 bottom-0 h-[48%] bg-gradient-to-t from-black/70 to-transparent" />
+              )}
+              {preview.band && <div className="absolute inset-x-0 bottom-0 h-[22%] bg-[#fff8ec]" />}
+              {preview.ribbon && (
+                <div className="absolute inset-y-0 left-0 w-[38%]" style={{ background: `${titleColor}dd` }} />
               )}
               <div
-                className="absolute left-[8%] right-[8%] text-center font-bold"
+                className={['absolute text-center font-bold', preview.ribbon ? 'left-[3%] w-[30%] text-left' : 'left-[8%] right-[8%]'].join(' ')}
                 style={{
                   top: `${titleYPct}%`,
-                  fontSize: pt(titleSizePt),
-                  color: titleColor,
-                  textShadow: '0 0 6px rgba(255,252,244,0.9), 0 0 12px rgba(255,252,244,0.7)',
+                  fontSize: pt(Math.min(titleSizePt, preview.frame || preview.ribbon ? 22 : 60)),
+                  color: preview.band || preview.frame ? '#3a2f21' : titleColor,
+                  textShadow:
+                    preview.band || preview.frame ? 'none' : '0 0 6px rgba(0,0,0,0.35), 0 0 2px rgba(0,0,0,0.4)',
                 }}
               >
                 {title}
               </div>
               {author && (
                 <div
-                  className="absolute left-[8%] right-[8%] text-center"
+                  className={['absolute text-center', preview.ribbon ? 'left-[3%] w-[30%] text-left' : 'left-[8%] right-[8%]'].join(' ')}
                   style={{
                     top: `${authorYPct}%`,
                     fontSize: pt(authorSizePt),
-                    color: '#4a3f2f',
-                    textShadow: '0 0 4px rgba(255,252,244,0.9)',
+                    color: preview.band || preview.frame ? '#4a3f2f' : preview.ribbon ? '#e4e8ec' : titleColor,
+                    textShadow: preview.band || preview.frame ? 'none' : '0 0 4px rgba(0,0,0,0.35)',
                   }}
                 >
                   {author} 지음
@@ -245,8 +296,48 @@ export function CoverClient() {
             </div>
           )}
 
-          {/* 표지 이미지 선택 */}
+          {/* 표지 디자인 — 스타일에 어울리는 디자인이 자동 적용되어 있고, 다른 걸 고를 수도 있다 */}
           <div className="mt-5 w-full max-w-xl">
+            <div className="mb-2 flex items-center justify-between">
+              <div className="text-xs font-semibold text-gray-500">
+                표지 디자인 · {COVER_DESIGN_META.find((d) => d.id === designId)?.name}
+                {!layout.designId && <span className="ml-1 text-brand-600">(추천)</span>}
+              </div>
+              <button
+                onClick={() => setShowGallery((v) => !v)}
+                className="rounded border border-gray-200 px-2 py-1 text-[11px] text-gray-500 hover:border-gray-300"
+              >
+                {showGallery ? '접기' : '다른 디자인 보기'}
+              </button>
+            </div>
+            {showGallery && (
+              <div className="mb-4 grid grid-cols-3 gap-2">
+                {COVER_DESIGN_META.map((d) => (
+                  <button
+                    key={d.id}
+                    onClick={() => selectDesign(d.id)}
+                    title={d.description}
+                    className={[
+                      'flex flex-col overflow-hidden rounded-lg border text-left',
+                      d.id === designId ? 'border-brand-500 ring-2 ring-brand-300' : 'border-gray-200 hover:border-gray-400',
+                    ].join(' ')}
+                  >
+                    <div className="flex h-10">
+                      <div className="w-2/5" style={{ background: d.backBg }} />
+                      <div className="flex-1" style={{ background: d.spineBg }} />
+                    </div>
+                    <div className="p-1.5 text-[11px] font-medium text-gray-700">
+                      {d.name}
+                      {d.id === recommendedDesignId && <span className="ml-1 text-brand-600">추천</span>}
+                    </div>
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+
+          {/* 표지 이미지 선택 */}
+          <div className="w-full max-w-xl">
             <div className="mb-2 text-xs font-semibold text-gray-500">표지 이미지 선택</div>
             <div className="grid grid-cols-3 gap-3">
               {project.publish.coverOptions.map((c) => (

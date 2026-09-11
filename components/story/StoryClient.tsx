@@ -19,6 +19,10 @@ export function StoryClient() {
   const [brainstormMode, setBrainstormMode] = useState(false);
   const [chatInput, setChatInput] = useState('');
   const chatEndRef = useRef<HTMLDivElement>(null);
+  // 파트 1 진입 3갈래 — 선택지 과부하를 줄이려고 처음엔 하나만 고르게 한다.
+  // 스토리가 이미 있으면(재편집) 갈래 선택을 건너뛰고 바로 편집 화면으로.
+  const [entryMode, setEntryMode] = useState<'idea' | 'brainstorm' | 'paste' | null>(null);
+  const [pasteText, setPasteText] = useState('');
 
   const chatMessages = project.story.brainstorm?.messages ?? [];
   // 새 메시지가 오면 채팅 맨 아래로
@@ -57,10 +61,21 @@ export function StoryClient() {
   };
 
   const openBrainstorm = async () => {
+    setEntryMode('brainstorm');
     setBrainstormMode(true);
     if (chatMessages.length === 0) {
       await call('브레인스토밍 시작', '/api/story/brainstorm', { action: 'start' });
     }
+  };
+
+  const importStory = async () => {
+    if (!pasteText.trim()) return;
+    const data = await call('원고 가져오기', '/api/story/import', {
+      text: pasteText,
+      sceneCount: project.story.sceneCount,
+      targetAge: project.story.targetAge || undefined,
+    });
+    if (data) setMessage('원고를 장면으로 나눴어요 — 원문은 그대로이며 바로 승인할 수 있습니다.');
   };
 
   const sendChat = async () => {
@@ -176,6 +191,117 @@ export function StoryClient() {
   };
 
   const hasStory = project.story.scenes.length > 0 && !!project.story.idea;
+  // "내가 쓴 글 그대로" 원고는 게이트 통과 여부와 무관하게 바로 승인할 수 있다
+  // (참고용 피드백은 보여주되 원문을 고치라고 강제하지 않음 — story/import 라우트 참고).
+  const allUserText = project.story.scenes.length > 0 && project.story.scenes.every((s) => s.textSource === 'user');
+  const canApprove = gatePassed || allUserText;
+
+  // 처음 진입 — 갈래 3개 중 하나를 고를 때까지는 편집 화면 대신 선택 카드만 보여준다.
+  if (!hasStory && entryMode === null) {
+    return (
+      <div className="flex flex-1 flex-col overflow-hidden">
+        <div className="flex items-center justify-between border-b border-gray-200 bg-white px-6 py-3">
+          <StepBar project={project} active="story" />
+        </div>
+        <div className="mx-auto flex w-full max-w-3xl flex-1 flex-col items-center justify-center gap-4 p-6">
+          <h1 className="mb-2 text-xl font-bold">어떻게 시작할까요?</h1>
+          <div className="grid w-full grid-cols-1 gap-4 sm:grid-cols-3">
+            <EntryCard
+              icon="🪄"
+              title="아이디어만 던지기"
+              desc="한 줄 아이디어만 주면 AI가 스토리를 전부 만들어요"
+              onClick={() => setEntryMode('idea')}
+            />
+            <EntryCard
+              icon="💬"
+              title="작가도우미와 대화"
+              desc="등장인물부터 하나씩 함께 정하며 만들어요"
+              onClick={openBrainstorm}
+            />
+            <EntryCard
+              icon="📝"
+              title="내가 쓴 글 그대로"
+              desc="이미 써온 원고를 그대로 쓰고 그림만 붙여요"
+              onClick={() => setEntryMode('paste')}
+            />
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // "내가 쓴 글 그대로" — 붙여넣기 전용 화면 (스토리 생성 전까지)
+  if (!hasStory && entryMode === 'paste') {
+    return (
+      <div className="flex flex-1 flex-col overflow-hidden">
+        <div className="flex items-center justify-between border-b border-gray-200 bg-white px-6 py-3">
+          <StepBar project={project} active="story" />
+          <button
+            onClick={() => setEntryMode(null)}
+            className="rounded-lg border border-gray-200 px-3 py-1.5 text-xs text-gray-500 hover:border-gray-300"
+          >
+            ← 다른 방법으로 시작
+          </button>
+        </div>
+        {message && (
+          <div className="border-b border-brand-100 bg-brand-50 px-6 py-2 text-xs text-gray-700">{message}</div>
+        )}
+        <div className="mx-auto w-full max-w-2xl flex-1 overflow-y-auto p-6">
+          <h1 className="mb-1 text-lg font-bold">내가 쓴 글 그대로</h1>
+          <p className="mb-4 text-xs text-gray-500">
+            문장은 한 글자도 바꾸지 않아요. AI는 장면을 나누고, 그림 제작에 필요한 등장인물·배경 정보만 뽑습니다.
+          </p>
+          <textarea
+            value={pasteText}
+            onChange={(e) => setPasteText(e.target.value)}
+            rows={14}
+            placeholder="완성한 동화 원고를 여기 붙여넣으세요…"
+            className="w-full resize-none rounded-lg border border-gray-300 p-3 text-sm leading-relaxed"
+          />
+          <div className="mt-3 flex items-end gap-3">
+            <label className="text-xs text-gray-500">
+              장면 수
+              <select
+                value={SCENE_COUNT_PRESETS.includes(project.story.sceneCount) ? project.story.sceneCount : 'custom'}
+                onChange={(e) => {
+                  if (e.target.value !== 'custom') patchStory({ sceneCount: Number(e.target.value) });
+                }}
+                className="mt-1 block rounded border border-gray-300 p-1.5"
+              >
+                {SCENE_COUNT_PRESETS.map((n) => (
+                  <option key={n} value={n}>{n}장면</option>
+                ))}
+                <option value="custom">직접 입력…</option>
+              </select>
+            </label>
+            {!SCENE_COUNT_PRESETS.includes(project.story.sceneCount) && (
+              <label className="text-xs text-gray-500">
+                직접 입력
+                <input
+                  type="number"
+                  min={4}
+                  max={40}
+                  value={project.story.sceneCount}
+                  onChange={(e) => {
+                    const n = Math.round(Number(e.target.value));
+                    if (Number.isFinite(n)) patchStory({ sceneCount: Math.min(40, Math.max(4, n)) });
+                  }}
+                  className="mt-1 block w-20 rounded border border-gray-300 p-1.5"
+                />
+              </label>
+            )}
+            <button
+              onClick={importStory}
+              disabled={busy !== null || !isPersisted || !pasteText.trim()}
+              className="ml-auto rounded-lg bg-brand-500 px-4 py-2 text-sm font-semibold text-white hover:bg-brand-600 disabled:opacity-50"
+            >
+              {busy === '원고 가져오기' ? '나누는 중…' : '장면으로 나누기'}
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="flex flex-1 flex-col overflow-hidden">
@@ -194,11 +320,11 @@ export function StoryClient() {
           </button>
           <button
             onClick={approve}
-            disabled={saving || !gatePassed}
-            title={gatePassed ? undefined : '품질 게이트 5종을 통과해야 승인할 수 있습니다'}
+            disabled={saving || !canApprove}
+            title={canApprove ? undefined : '품질 게이트 5종을 통과해야 승인할 수 있습니다'}
             className="rounded-lg bg-brand-500 px-4 py-2 text-sm font-semibold text-white hover:bg-brand-600 disabled:opacity-60"
           >
-            {project.story.approved ? '스토리 승인됨 ✓' : gatePassed ? '스토리 승인' : '승인 (게이트 통과 필요)'}
+            {project.story.approved ? '스토리 승인됨 ✓' : canApprove ? '스토리 승인' : '승인 (게이트 통과 필요)'}
           </button>
         </div>
       </div>
@@ -491,6 +617,29 @@ export function StoryClient() {
         }
       />
     </div>
+  );
+}
+
+function EntryCard({
+  icon,
+  title,
+  desc,
+  onClick,
+}: {
+  icon: string;
+  title: string;
+  desc: string;
+  onClick: () => void;
+}) {
+  return (
+    <button
+      onClick={onClick}
+      className="flex flex-col items-center gap-2 rounded-xl border border-gray-200 bg-white p-6 text-center hover:border-brand-400 hover:shadow-sm"
+    >
+      <span className="text-3xl">{icon}</span>
+      <span className="font-semibold">{title}</span>
+      <span className="text-xs text-gray-500">{desc}</span>
+    </button>
   );
 }
 

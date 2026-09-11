@@ -428,3 +428,131 @@ export async function regenerateScene(
   }
   throw new Error(`장면 재생성 실패: ${lastError}`);
 }
+
+// --- "내가 쓴 글 그대로" 가져오기 (파트 1 진입 3카드 중 하나) ----------------
+//
+// 사용자가 이미 완성한 원고를 그대로 쓰고 싶어할 때: AI는 문장을 단 한 글자도
+// 고치지 않고, 원문 문자 인덱스로 장면 경계만 나누고(재작성 없음), 그림 생성에
+// 필요한 메타데이터(beat/location/emotion/visualFocus/characters/preferredTextArea)와
+// 등장인물 cast만 추론한다. 결과 장면은 textSource: 'user'로 즉시 잠긴다.
+
+const IMPORT_SCHEMA = `{
+  "cast": [ { "id": "영문 id", "name": "한국어 이름", "description": "성격+겉모습 (그림용, 2~3문장)" } ],
+  "sceneStarts": [0, 123, 456, "... 정확히 sceneCount개, 오름차순, 첫 값은 반드시 0, 원문 문자 인덱스(0-based)"],
+  "scenes": [
+    {
+      "beat": "이 장면의 비트 이름 (한국어)",
+      "location": "장소 (한국어, 간결하게)",
+      "emotion": "이 장면의 감정 (한국어, 간결하게)",
+      "visualFocus": "그림이 포착해야 할 시각적 초점 (한국어)",
+      "characters": ["cast의 id 중에서"],
+      "preferredTextArea": "upper-left|upper-center|upper-right|center-left|center|center-right|lower-left|lower-center|lower-right 중 하나"
+    }
+  ]
+}`;
+
+function importContractFailure(
+  parsed: { sceneStarts?: unknown; scenes?: unknown; cast?: unknown },
+  textLength: number,
+  sceneCount: number,
+): string | null {
+  if (!Array.isArray(parsed.sceneStarts) || parsed.sceneStarts.length !== sceneCount)
+    return `sceneStarts 개수가 ${Array.isArray(parsed.sceneStarts) ? parsed.sceneStarts.length : '?'} (${sceneCount}개여야 함)`;
+  const starts = parsed.sceneStarts as unknown[];
+  if (starts[0] !== 0) return 'sceneStarts[0]이 0이 아님';
+  for (let i = 0; i < starts.length; i++) {
+    const v = starts[i];
+    if (typeof v !== 'number' || v < 0 || v > textLength) return `sceneStarts[${i}]가 원문 범위를 벗어남`;
+    if (i > 0 && !(v > (starts[i - 1] as number))) return `sceneStarts가 오름차순이 아님 (index ${i})`;
+  }
+  if (!Array.isArray(parsed.scenes) || parsed.scenes.length !== sceneCount)
+    return `scenes 개수가 ${Array.isArray(parsed.scenes) ? parsed.scenes.length : '?'} (${sceneCount}개여야 함)`;
+  for (const s of parsed.scenes as Record<string, unknown>[]) {
+    if (typeof s.beat !== 'string' || !s.beat) return 'beat 누락';
+    if (typeof s.location !== 'string') return 'location 누락';
+    if (typeof s.emotion !== 'string') return 'emotion 누락';
+    if (typeof s.visualFocus !== 'string') return 'visualFocus 누락';
+    if (!Array.isArray(s.characters)) return 'characters 누락';
+    if (!TEXT_AREAS.includes(s.preferredTextArea as Scene['preferredTextArea'])) return 'preferredTextArea 값 오류';
+  }
+  return null;
+}
+
+export interface ImportStoryResult {
+  scenes: Scene[];
+  cast: StoryCastMember[];
+}
+
+/**
+ * 완성된 원고 텍스트를 sceneCount개 장면으로 나눈다 (재작성 없음 — 원문 문자 그대로).
+ * self-repair 최대 2회. 반환된 Scene.text는 원문의 부분 문자열 그대로다.
+ */
+export async function importStoryText(text: string, sceneCount: number): Promise<ImportStoryResult> {
+  const trimmed = text.trim();
+  const system = [
+    '너는 그림책 편집자다. 아래 사용자가 이미 완성한 원고를 정확히',
+    `${sceneCount}개의 장면으로 나눈다. 문장을 단 한 글자도 바꾸거나 다듬지 마라 — 나눌 위치(문자 인덱스)만 정하고,`,
+    '각 장면의 그림 제작용 메타데이터와 등장인물 목록(cast)만 추론하라.',
+    '',
+    '아래 JSON 스키마 그대로 반환하라. 코드펜스·설명 금지.',
+    IMPORT_SCHEMA,
+  ].join('\n');
+  const user = `원고 (총 ${trimmed.length}자):\n${trimmed}`;
+
+  let lastError = '';
+  let lastResponse = '';
+  for (let attempt = 0; attempt < 3; attempt++) {
+    const prompt =
+      attempt === 0
+        ? user
+        : [
+            user,
+            '',
+            `이전 응답이 형식 검사에 실패했다: ${lastError}`,
+            '이전 응답:',
+            lastResponse.slice(0, 4000),
+            '',
+            '실패 사유를 고쳐 완전한 JSON을 다시 반환하라.',
+          ].join('\n');
+    const raw = await callGemini(system, prompt, attempt === 0 ? 0.3 : 0.1);
+    lastResponse = raw;
+    let parsed: { sceneStarts?: unknown; scenes?: unknown; cast?: unknown };
+    try {
+      parsed = parseJson(raw);
+    } catch (e) {
+      lastError = `JSON 파싱 실패: ${(e as Error).message}`;
+      continue;
+    }
+    const failure = importContractFailure(parsed, trimmed.length, sceneCount);
+    if (failure) {
+      lastError = failure;
+      continue;
+    }
+    const starts = parsed.sceneStarts as number[];
+    const metas = parsed.scenes as {
+      beat: string;
+      location: string;
+      emotion: string;
+      visualFocus: string;
+      characters: unknown[];
+      preferredTextArea: Scene['preferredTextArea'];
+    }[];
+    const scenes: Scene[] = starts.map((start, i) => {
+      const end = i + 1 < starts.length ? starts[i + 1] : trimmed.length;
+      const meta = metas[i];
+      return {
+        sceneNumber: i + 1,
+        beat: meta.beat,
+        text: trimmed.slice(start, end).trim(), // 원문 그대로 — AI가 만든 값이 아니라 인덱스로 직접 자른 결과
+        textSource: 'user' as const, // 사용자 원문이므로 즉시 잠금 (AI 재생성이 덮어쓰지 않음)
+        characters: meta.characters.map(String),
+        location: meta.location,
+        emotion: meta.emotion,
+        visualFocus: meta.visualFocus,
+        preferredTextArea: meta.preferredTextArea,
+      };
+    });
+    return { scenes, cast: parseCast(parsed.cast) };
+  }
+  throw new Error(`원고 분할 실패 (3회 시도): ${lastError}`);
+}

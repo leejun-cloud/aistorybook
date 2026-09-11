@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { loadProject, saveProject } from '../../../../lib/store';
 import { generateStoryDraft, loadPatternLibrary, selectPatterns } from '../../../../lib/ai/story';
+import { seedCastCharacters, rebuildLayoutPages } from '../../../../lib/story-apply';
 
 // POST /api/story/generate
 // body: { projectId, idea, targetAge, sceneCount(4~40 정수), desiredMood, patternIds? }
@@ -36,29 +37,7 @@ export async function POST(req: NextRequest) {
       patterns,
     });
 
-    // 등장인물 자동 시드 (파트 2): 빈 플레이스홀더(후보·레퍼런스 없음)는 정리하고,
-    // 스토리가 산출한 cast를 미확정 캐릭터로 등록한다. 장면 characters의 id와
-    // 캐릭터 id가 일치해 그림 생성 시 장면별 등장인물 매칭이 정확해진다.
-    project.character.characters = project.character.characters.filter(
-      (x) => x.confirmed || x.referenceImageUrl || x.candidates.some((cand) => cand.imageUrl),
-    );
-    for (const member of cast) {
-      const existing = project.character.characters.find(
-        (x) => x.id === member.id || x.name === member.name,
-      );
-      if (existing) {
-        existing.description = member.description;
-      } else {
-        project.character.characters.push({
-          id: member.id,
-          name: member.name,
-          description: member.description,
-          candidates: [],
-          textDNA: { fixed: [], forbidden: [] },
-          confirmed: false,
-        });
-      }
-    }
+    seedCastCharacters(project, cast);
 
     project.story = {
       ...project.story,
@@ -71,22 +50,7 @@ export async function POST(req: NextRequest) {
       qualityGate: undefined,
       approved: false,
     };
-    // 조판 페이지를 새 장면에 맞춰 재구축 — 시드/이전 스토리의 페이지·이미지는
-    // 새 장면과 무관하므로 남기지 않는다 (사전검사의 페이지 대응 기준).
-    project.layout.pages = scenes.map((s, i) => ({
-      sceneNumber: s.sceneNumber,
-      templateId: project.layout.templates[i % project.layout.templates.length]?.id ?? 'L01',
-      slots: [
-        { slotId: 'image-1', imageStatus: 'idle' as const, candidates: [] },
-        {
-          slotId: 'text-1',
-          text: s.text,
-          // 스타일 프리셋/레퍼런스가 정한 글 상자 기본값 반영 ('none' = 상자 없이 글로우)
-          ...(project.layout.textBoxDefault === 'none' ? { textBox: 'none' as const } : {}),
-        },
-      ],
-    }));
-    project.layout.approved = false;
+    rebuildLayoutPages(project, scenes);
     await saveProject(project);
     return NextResponse.json({ story: project.story });
   } catch (e) {

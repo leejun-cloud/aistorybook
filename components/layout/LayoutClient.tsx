@@ -19,6 +19,7 @@ export function LayoutClient() {
   const [selectedPage, setSelectedPage] = useState<number>(1);
   const [busy, setBusy] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
+  const [showTemplatePicker, setShowTemplatePicker] = useState(false);
 
   if (loading) return <div className="p-8 text-gray-400">불러오는 중…</div>;
 
@@ -413,22 +414,38 @@ export function LayoutClient() {
             </div>
 
             <div>
-              <div className="mb-2 font-semibold">템플릿 교체</div>
-              <div className="grid grid-cols-2 gap-2">
-                {project.layout.templates.map((t) => (
-                  <button
-                    key={t.id}
-                    onClick={() => changeTemplate(t.id)}
-                    className={[
-                      'rounded-lg border p-2 text-left text-xs',
-                      t.id === page?.templateId ? 'border-brand-400 bg-brand-50' : 'border-gray-200 hover:border-gray-300',
-                    ].join(' ')}
-                  >
-                    <div className="font-semibold">{t.id}</div>
-                    <div className="text-gray-500">{t.name}</div>
-                  </button>
-                ))}
+              <div className="mb-2 flex items-center justify-between font-semibold">
+                <span>템플릿</span>
+                <button
+                  onClick={() => setShowTemplatePicker((v) => !v)}
+                  className="rounded border border-gray-200 px-2 py-0.5 text-[11px] font-normal text-gray-500 hover:border-gray-300"
+                >
+                  {showTemplatePicker ? '접기' : '템플릿 직접 바꾸기'}
+                </button>
               </div>
+              {!showTemplatePicker ? (
+                <div className="rounded-lg bg-gray-50 p-2 text-xs text-gray-600">
+                  <span className="font-semibold text-gray-700">{page?.templateId}</span>{' '}
+                  {project.layout.templates.find((t) => t.id === page?.templateId)?.name}{' '}
+                  <span className="text-gray-400">(AI 추천)</span>
+                </div>
+              ) : (
+                <div className="grid grid-cols-2 gap-2">
+                  {project.layout.templates.map((t) => (
+                    <button
+                      key={t.id}
+                      onClick={() => changeTemplate(t.id)}
+                      className={[
+                        'rounded-lg border p-2 text-left text-xs',
+                        t.id === page?.templateId ? 'border-brand-400 bg-brand-50' : 'border-gray-200 hover:border-gray-300',
+                      ].join(' ')}
+                    >
+                      <div className="font-semibold">{t.id}</div>
+                      <div className="text-gray-500">{t.name}</div>
+                    </button>
+                  ))}
+                </div>
+              )}
             </div>
           </div>
         }

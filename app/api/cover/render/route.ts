@@ -78,7 +78,7 @@ export async function POST(req: NextRequest) {
       spine,
       dims: result.dims,
       printCoverPdfUrl: project.publish.outputs.printCoverPdfUrl,
-      files: { html: result.htmlPath, pdf: result.pdfPath },
+      files: { pdf: result.pdfPath },
     });
   } catch (e) {
     return NextResponse.json({ status: 'failed', error: (e as Error).message }, { status: 500 });

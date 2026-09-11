@@ -2,27 +2,26 @@
 //
 // 항목:
 //   1. 페이지 누락·순서   — story.scenes ↔ layout.pages 대응, 순번 연속성
-//   2. 글 넘침            — 렌더된 HTML을 Playwright로 열어 텍스트 슬롯 실측 (scrollHeight)
+//   2. 글 넘침            — Typst measure()로 각 텍스트 슬롯의 실제 조판 높이를 실측
+//                            (기존 Playwright DOM scrollHeight 방식보다 더 정밀한 mm 단위 측정)
 //   3. 안전영역 침범       — 글 슬롯이 재단선 안쪽 안전영역(≥5mm)·여백 규격(§3.6) 안인지
 //                            (풀블리드 그림 슬롯은 여백 규칙의 예외 — 글 슬롯에만 적용)
 //   4. 이미지 실해상도     — 300dpi 기준. 1024px는 210mm 판면에서 약 124dpi → WARN + 업스케일 권고
-//   5. 폰트 임베드         — 로컬 Pretendard 파일 존재 + @font-face 포함 여부
+//   5. 폰트 임베드         — 로컬 Pretendard 파일 존재 여부
 //
 // WARN(비차단)은 passed=true + detail "WARN: ..." 로 표기한다 — PreflightResult.passed는
 // 차단(FAIL) 항목이 없을 때 true.
 
-import { execSync } from 'child_process';
 import fs from 'fs';
 import path from 'path';
 import type { PreflightItem, PreflightResult, Project } from '../types';
-import { renderBookHtml } from '../render/html';
-import { renderWorkDir } from '../render/pdf';
+import { slotRectMm, TEXT_PAD_MM, TRIM_MM as RENDER_TRIM_MM } from '../render/book';
+import { getTemplate } from '../render/templates';
+import { measureTypstHeightsMm } from '../render/typst';
 import { readCharacterAsset } from '../ai/character';
 import { assetNameFromUrl, printVariantName } from '../render/upscale';
 import { getProfile, type PrintProfile } from '../cover/profiles';
 
-// 렌더러(lib/render/html.ts) 고정 판형 — 수정 금지 파일이므로 상수로 미러링
-const RENDER_TRIM_MM = 210;
 const TARGET_DPI = 300;
 
 export interface PreflightOptions {
@@ -62,72 +61,45 @@ function imageSize(buf: Buffer): { width: number; height: number } | null {
 }
 
 // ---------------------------------------------------------------------------
-// Playwright (전역 설치본 — lib/render/pdf.ts와 같은 방식)
+// 글 넘침 — Typst measure()로 실측 (lib/render/book.ts의 렌더 기하와 동일한 산수)
 // ---------------------------------------------------------------------------
-
-// Chromium 실행은 lib/render/pdf.ts와 같은 해석 순서 (Vercel 서버리스 / 로컬 / 전역)
-let cachedChromium: { chromium: any; serverless: any | null } | null = null;
-async function launchBrowser(): Promise<any> {
-  if (!cachedChromium) {
-    if (process.env.VERCEL) {
-      // 서버리스: 정적 분석 가능한 dynamic import — Vercel 파일 추적에 포함된다
-      const serverless = (await import('@sparticuz/chromium')).default;
-      const { chromium } = await import('playwright-core');
-      cachedChromium = { chromium, serverless };
-    } else {
-      const req = eval('require') as NodeRequire;
-      let chromium: any;
-      try {
-        ({ chromium } = req('playwright'));
-      } catch {
-        const globalRoot = execSync('npm root -g', { encoding: 'utf-8' }).trim();
-        ({ chromium } = req(path.join(globalRoot, 'playwright')));
-      }
-      cachedChromium = { chromium, serverless: null };
-    }
-  }
-  const { chromium, serverless } = cachedChromium;
-  if (serverless) {
-    return chromium.launch({
-      args: serverless.args,
-      executablePath: await serverless.executablePath(),
-      headless: true,
-    });
-  }
-  return chromium.launch();
-}
 
 interface TextOverflow {
   sceneNumber: number;
-  overflowPx: number;
+  overflowMm: number;
 }
 
-/** 열람용 HTML을 실제로 열어 각 텍스트 슬롯의 넘침(px)을 측정한다. */
 async function measureTextOverflow(project: Project): Promise<TextOverflow[]> {
-  const html = await renderBookHtml(project, { mode: 'view', titlePage: false });
-  const tmp = path.join(renderWorkDir(project.id), 'preflight-measure.html');
-  fs.writeFileSync(tmp, html, 'utf-8');
+  const sceneByNumber = new Map(project.story.scenes.map((s) => [s.sceneNumber, s]));
+  const jobs: { sceneNumber: number; text: string; widthMm: number; heightMm: number; fontSizePt: number; leading: number }[] = [];
 
-  const browser = await launchBrowser();
-  try {
-    const page = await browser.newPage();
-    await page.goto('file://' + tmp, { waitUntil: 'networkidle' });
-    await page.evaluate(() => (document as any).fonts.ready);
-    return (await page.evaluate(() => {
-      const out: { sceneNumber: number; overflowPx: number }[] = [];
-      document.querySelectorAll('section.sheet[data-scene]').forEach((sheet) => {
-        const sceneNumber = Number(sheet.getAttribute('data-scene'));
-        sheet.querySelectorAll('.slot.txt').forEach((slot) => {
-          const el = slot as HTMLElement;
-          const overflow = el.scrollHeight - el.clientHeight;
-          if (overflow > 1) out.push({ sceneNumber, overflowPx: overflow });
-        });
+  for (const page of project.layout.pages) {
+    const template = getTemplate(page.templateId);
+    for (const slot of template.slots) {
+      if (slot.type !== 'text') continue;
+      const data = page.slots.find((s) => s.slotId === slot.id);
+      const text = data?.text ?? sceneByNumber.get(page.sceneNumber)?.text ?? '';
+      if (!text.trim()) continue;
+      const rect = slotRectMm(slot);
+      jobs.push({
+        sceneNumber: page.sceneNumber,
+        text,
+        widthMm: rect.w - 2 * TEXT_PAD_MM.x,
+        heightMm: rect.h - 2 * TEXT_PAD_MM.y,
+        fontSizePt: data?.fontSizePx ? data.fontSizePx * 0.75 : 13.5,
+        leading: (data?.lineHeight ?? 1.85) - 1,
       });
-      return out;
-    })) as TextOverflow[];
-  } finally {
-    await browser.close();
+    }
   }
+  if (jobs.length === 0) return [];
+
+  const measured = await measureTypstHeightsMm(jobs);
+  const overflows: TextOverflow[] = [];
+  jobs.forEach((job, i) => {
+    const overflowMm = measured[i] - job.heightMm;
+    if (overflowMm > 0.5) overflows.push({ sceneNumber: job.sceneNumber, overflowMm });
+  });
+  return overflows;
 }
 
 // ---------------------------------------------------------------------------
@@ -216,19 +188,14 @@ async function checkImageResolution(project: Project): Promise<PreflightItem> {
   };
 }
 
-async function checkFontEmbed(project: Project): Promise<PreflightItem> {
+function checkFontEmbed(): PreflightItem {
   const fontsDir = path.join(process.cwd(), 'lib', 'render', 'fonts');
   const files = ['Pretendard-Regular.ttf', 'Pretendard-Bold.ttf'];
   const missing = files.filter((f) => !fs.existsSync(path.join(fontsDir, f)));
-  if (missing.length) {
-    return { label: '폰트 임베드', passed: false, detail: `폰트 파일 누락: ${missing.join(', ')}` };
-  }
-  const html = await renderBookHtml(project, { mode: 'print', sceneNumbers: [] });
-  const hasFace = html.includes('@font-face') && html.includes('Pretendard-Regular.ttf');
   return {
     label: '폰트 임베드',
-    passed: hasFace,
-    detail: hasFace ? 'Pretendard Regular/Bold 로컬 임베드' : '@font-face 누락',
+    passed: missing.length === 0,
+    detail: missing.length ? `폰트 파일 누락: ${missing.join(', ')}` : 'Pretendard Regular/Bold 로컬 임베드 (Typst fontPaths)',
   };
 }
 
@@ -255,14 +222,14 @@ export async function runPreflight(project: Project, opts: PreflightOptions = {}
   const items: PreflightItem[] = [];
   items.push(checkPageOrder(project));
 
-  // 글 넘침 — 실측
+  // 글 넘침 — Typst measure()로 실측
   try {
     const overflows = await measureTextOverflow(project);
     items.push({
       label: '글 넘침',
       passed: overflows.length === 0,
       detail: overflows.length
-        ? overflows.map((o) => `p${o.sceneNumber} 텍스트 ${o.overflowPx}px 넘침`).join(' / ')
+        ? overflows.map((o) => `p${o.sceneNumber} 텍스트 ${o.overflowMm.toFixed(1)}mm 넘침`).join(' / ')
         : '모든 텍스트 슬롯 안에 수납됨 (렌더 실측)',
     });
   } catch (e) {
@@ -271,7 +238,7 @@ export async function runPreflight(project: Project, opts: PreflightOptions = {}
 
   items.push(checkSafeArea(project, profile));
   items.push(await checkImageResolution(project));
-  items.push(await checkFontEmbed(project));
+  items.push(checkFontEmbed());
   const fmt = checkFormatProfile(profile);
   if (fmt) items.push(fmt);
 

@@ -1,4 +1,4 @@
-// 랩 표지 렌더 — 앞표지 + 책등 + 뒷표지(+날개 옵션) 한 장 HTML → PDF.
+// 랩 표지 렌더 — 앞표지 + 책등 + 뒷표지(+날개 옵션) 한 장을 Typst로 조판해 PDF로.
 //
 // 부크크 공식 규격체크 로직(research/print-profiles.md §2)과 1:1 대응:
 //   표지 전체 폭 = 판형폭 × 2 + 책등 + (날개 시 100 × 2)
@@ -6,7 +6,9 @@
 //   구성(왼→오): [왼날개] 뒷표지 | 책등 | 앞표지 [오른날개]
 //   재단여백(bleed) 3mm — PDF 페이지는 사방 +3mm.
 //
-// 표지 그림 = AI(generate.ts), 제목·작가명 = HTML 텍스트 (PRD §4.3 그림/글자 분리).
+// 표지 그림 = AI(generate.ts), 제목·작가명·장식은 Typst 마크업 (PRD §4.3 그림/글자 분리).
+// 앞표지의 실제 디자인(비네트/배너/여백프레임 등)은 lib/cover/designs.ts의 큐레이션된
+// 조합 중 하나를 따른다 — 예전 HTML 방식은 "제목 상단 중앙" 1종류뿐이었다.
 // 책등 < 5mm → 책등 텍스트 생략 + 경고 (spine.ts 계산 결과를 그대로 따른다).
 //
 // [표지 안쪽 백지 규칙 — print-profiles.md §4-3] 무선제본은 표지 "안쪽면"의
@@ -18,16 +20,27 @@ import fs from 'fs';
 import path from 'path';
 import type { CoverTextLayout, Project } from '../types';
 import { readCharacterAsset } from '../ai/character';
-import { persistOutput, printHtmlToPdf, renderWorkDir } from '../render/pdf';
+import { persistOutput, renderWorkDir } from '../render/pdf';
 import { assetNameFromUrl, printVariantName } from '../render/upscale';
+import { compileTypstToPdf, typstText } from '../render/typst';
+import { getCoverDesign } from './designs';
 import type { PrintProfile } from './profiles';
 import type { SpineResult } from './spine';
 
-const FONTS_DIR = path.join(process.cwd(), 'lib', 'render', 'fonts');
-const fontUri = (f: string) => 'file://' + path.join(FONTS_DIR, f);
+const esc = typstText;
 
-function esc(s: string): string {
-  return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+/**
+ * 세로쓰기 — Typst의 text(dir:)는 가로 방향만 허용해 글자를 하나씩 세로로 쌓는다
+ * (기존 CSS writing-mode: vertical-rl과 동일한 결과, 한글 음절 낱자 단위 배치).
+ * stack() 호출부 안은 이미 code 모드라 각 항목을 [ ] 콘텐츠 리터럴로 감싼다.
+ */
+function verticalStack(text: string, sizePt: number, weight: number, colorHex: string): string {
+  const items = [...text].map((ch) =>
+    ch === ' '
+      ? 'v(3mm)'
+      : `[#text(size: ${sizePt}pt, weight: ${weight}, fill: rgb("${colorHex}"))[${esc(ch)}]]`,
+  );
+  return `#stack(dir: ttb, spacing: 1.2mm, ${items.join(', ')})`;
 }
 
 export interface WrapCoverOptions {
@@ -41,7 +54,7 @@ export interface WrapCoverOptions {
   flaps?: boolean;
   /** 뒷표지 소개 문구 (기본: 첫 장면 텍스트) */
   backBlurb?: string;
-  /** 표지 텍스트 편집 설정 (/cover 페이지) — 제목·작가·책등 글·위치·크기 */
+  /** 표지 텍스트 편집 설정 (/cover 페이지) — 제목·작가·책등 글·위치·크기·디자인 */
   layout?: CoverTextLayout;
 }
 
@@ -72,7 +85,11 @@ export function wrapCoverDimensions(profile: PrintProfile, spine: SpineResult, f
   };
 }
 
-export async function renderWrapCoverHtml(project: Project, opts: WrapCoverOptions): Promise<{ html: string; dims: WrapCoverDimensions }> {
+/** 랩 표지 Typst 소스 + 이미지 자산을 만든다 (컴파일은 호출자가). */
+export async function renderWrapCoverTypst(
+  project: Project,
+  opts: WrapCoverOptions,
+): Promise<{ source: string; images: Record<string, Buffer>; dims: WrapCoverDimensions }> {
   const { profile, spine, flaps = false } = opts;
   const dims = wrapCoverDimensions(profile, spine, flaps);
   const b = profile.bleed;
@@ -82,9 +99,9 @@ export async function renderWrapCoverHtml(project: Project, opts: WrapCoverOptio
   const coverName = assetNameFromUrl(opts.coverImageUrl);
   const variantBuf = coverName ? await readCharacterAsset(project.id, printVariantName(coverName)) : null;
   const buf = variantBuf ?? (await readCharacterAsset(project.id, opts.coverImageUrl));
-  const coverUri = buf
-    ? `data:image/${variantBuf ? 'jpeg' : 'png'};base64,${buf.toString('base64')}`
-    : null;
+  // 인쇄 변형본은 JPEG(@print.jpg)이므로 실제 포맷에 맞는 확장자로 Typst에 넘긴다
+  // (틀린 확장자를 주면 Typst의 이미지 디코더가 포맷을 오인해 실패한다)
+  const coverImageName = variantBuf ? 'cover.jpg' : 'cover.png';
 
   // 텍스트 편집 설정 (없으면 기존 기본값과 동일하게 동작)
   const layout = opts.layout ?? {};
@@ -93,86 +110,83 @@ export async function renderWrapCoverHtml(project: Project, opts: WrapCoverOptio
   const blurb = layout.backBlurb?.trim() || opts.backBlurb || project.story.scenes[0]?.text || '';
   const clampPct = (v: number | undefined, def: number) =>
     Math.min(88, Math.max(0, typeof v === 'number' ? v : def));
-  const titleYPct = clampPct(layout.titleYPct, 7);
-  const authorYPct = clampPct(layout.authorYPct, 88);
+  const titleYPct = layout.titleYPct !== undefined ? clampPct(layout.titleYPct, 7) : undefined;
+  const authorYPct = layout.authorYPct !== undefined ? clampPct(layout.authorYPct, 88) : undefined;
   const titleSizePt = Math.min(60, Math.max(10, layout.titleSizePt ?? 26));
   const authorSizePt = Math.min(30, Math.max(7, layout.authorSizePt ?? 12));
   const titleColor = /^#[0-9a-fA-F]{3,8}$/.test(layout.titleColor ?? '') ? layout.titleColor! : '#3a2f21';
   const spineLabel = layout.spineText?.trim() || title;
 
-  // 패널 x 오프셋 (bleed 포함 페이지 좌표, 왼→오: [왼날개] 뒤 | 책등 | 앞 [오른날개])
-  const backX = b + flapW;
-  const spineX = backX + profile.trim.width;
-  const frontX = spineX + spine.spineMm;
+  const design = getCoverDesign(layout.designId);
+  const frontWidthMm = profile.trim.width + b;
+  const frontHeightMm = dims.pageHeight;
 
-  const spineText =
-    spine.spineMm > 0 && spine.canFitSpineText
-      ? `<div class="spine-text">${esc(spineLabel)}${author ? `<span class="spine-author">${esc(author)}</span>` : ''}</div>`
-      : '';
+  const frontContent = design.renderFront({
+    title,
+    author,
+    frontWidthMm,
+    frontHeightMm,
+    titleColor,
+    titleSizePt,
+    authorSizePt,
+    titleYPct,
+    authorYPct,
+    imageName: coverImageName,
+  });
 
-  const html = `<!DOCTYPE html>
-<html lang="ko">
-<head>
-<meta charset="utf-8">
-<title>${esc(opts.title)} — 랩 표지</title>
-<style>
-@font-face { font-family: "Pretendard"; src: url("${fontUri('Pretendard-Regular.ttf')}"); font-weight: 400; }
-@font-face { font-family: "Pretendard"; src: url("${fontUri('Pretendard-Bold.ttf')}"); font-weight: 700; }
-@page { size: ${dims.pageWidth}mm ${dims.pageHeight}mm; margin: 0; }
-* { margin: 0; padding: 0; box-sizing: border-box; }
-html { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
-body { font-family: "Pretendard", sans-serif; width: ${dims.pageWidth}mm; height: ${dims.pageHeight}mm;
-  position: relative; overflow: hidden; background: #f4ead9; word-break: keep-all; }
+  const showSpineText = spine.spineMm > 0 && spine.canFitSpineText;
+  const spineFontPt = Math.min(11, Math.max(6, (spine.spineMm - 1.5) * 2.2));
 
-/* 배경 그림: 앞표지 패널 + 그 위/좌우 bleed까지 채운다 */
-.panel { position: absolute; top: 0; height: ${dims.pageHeight}mm; overflow: hidden; }
-.front { left: ${frontX}mm; width: ${profile.trim.width + b}mm; }
-.front .art { position: absolute; inset: 0;
-  ${coverUri ? `background: url('${coverUri}') center / cover no-repeat;` : 'background: #e8dcc8;'} }
-.back { left: ${backX - b - flapW}mm; width: ${profile.trim.width + b + flapW}mm; background: #efe3cf; }
-.spine { left: ${spineX}mm; width: ${spine.spineMm}mm; background: #d9c9ad; }
+  // 패널 폭 (뒤 [+날개] | 책등 | 앞 [+날개], 전부 bleed 포함 페이지 좌표계 mm)
+  const backW = profile.trim.width + b + flapW;
+  const spineW = spine.spineMm;
+  const frontW = frontWidthMm;
 
-/* 앞표지 텍스트 — 위치·크기는 coverLayout(%·pt), 기본은 상단 7%/하단 88% */
-.front .title { position: absolute; top: ${b + (titleYPct / 100) * profile.trim.height}mm; left: 10mm; right: 10mm;
-  font-size: ${titleSizePt}pt; font-weight: 700; text-align: center; color: ${titleColor};
-  text-shadow: 0 0 3mm rgba(255,252,244,0.9), 0 0 6mm rgba(255,252,244,0.7); }
-.front .author { position: absolute; top: ${b + (authorYPct / 100) * profile.trim.height}mm; left: 10mm; right: 10mm;
-  font-size: ${authorSizePt}pt; font-weight: 400; text-align: center; color: #4a3f2f;
-  text-shadow: 0 0 2mm rgba(255,252,244,0.9); }
+  const source = `
+#set page(width: ${dims.pageWidth}mm, height: ${dims.pageHeight}mm, margin: 0mm, fill: rgb("#f4ead9"))
+#set text(font: "Pretendard")
 
-/* 책등 텍스트 — 세로쓰기 */
-.spine-text { position: absolute; top: ${b + 10}mm; bottom: ${b + 10}mm; left: 0; right: 0;
-  writing-mode: vertical-rl; display: flex; align-items: center; justify-content: flex-start;
-  font-weight: 700; color: #3a2f21;
-  font-size: ${Math.min(11, Math.max(6, (spine.spineMm - 1.5) * 2.2))}pt; }
-.spine-author { margin-top: 6mm; font-weight: 400; font-size: 0.75em; }
+// ── 뒤표지 (+날개) ──────────────────────────────────────────────
+#place(dx: 0mm, dy: 0mm, rect(width: ${backW}mm, height: ${dims.pageHeight}mm, fill: rgb("${design.backBg}")))
+#place(dx: ${backW - profile.trim.width - 18}mm, dy: ${b + 16}mm)[
+  #box(width: ${profile.trim.width}mm - 36mm)[
+    #text(weight: 700, size: 13pt, fill: rgb("${design.backTextColor}"))[${esc(title)}]
+  ]
+]
+#place(dx: ${backW - profile.trim.width - 18}mm, dy: ${b + 30}mm)[
+  #box(width: ${profile.trim.width}mm - 36mm)[
+    #text(size: 10.5pt, fill: rgb("${design.backTextColor}"))[${esc(blurb)}]
+  ]
+]
 
-/* 뒷표지 */
-.back .blurb { position: absolute; top: ${b + 30}mm; right: ${flapW + 18}mm; width: ${profile.trim.width - 40}mm;
-  font-size: 10.5pt; line-height: 2; color: #4a3f2f; text-align: left; }
-.back .back-title { position: absolute; top: ${b + 16}mm; right: ${flapW + 18}mm;
-  font-size: 13pt; font-weight: 700; color: #3a2f21; }
-</style>
-</head>
-<body>
-  <div class="panel back">
-    <div class="back-title">${esc(title)}</div>
-    <div class="blurb">${esc(blurb)}</div>
-  </div>
-  <div class="panel spine">${spineText}</div>
-  <div class="panel front">
-    <div class="art"></div>
-    <div class="title">${esc(title)}</div>
-    ${author ? `<div class="author">${esc(author)} 지음</div>` : ''}
-  </div>
-</body>
-</html>`;
+// ── 책등 ──────────────────────────────────────────────────────
+#place(dx: ${backW}mm, dy: 0mm, rect(width: ${spineW}mm, height: ${dims.pageHeight}mm, fill: rgb("${design.spineBg}")))
+${
+  showSpineText
+    ? `#place(dx: ${backW}mm, dy: ${b + 10}mm)[
+  #box(width: ${spineW}mm, height: ${dims.pageHeight - 2 * (b + 10)}mm)[
+    #align(center + horizon)[
+      ${verticalStack(spineLabel, spineFontPt, 700, design.spineTextColor)}
+      ${author ? `#v(6mm)\n      ${verticalStack(author, spineFontPt * 0.75, 400, design.spineTextColor)}` : ''}
+    ]
+  ]
+]`
+    : ''
+}
 
-  return { html, dims };
+// ── 앞표지 (+날개) — 그림 + 디자인 템플릿 ────────────────────────
+#place(dx: ${backW + spineW}mm, dy: 0mm)[
+  #box(width: ${frontW}mm, height: ${dims.pageHeight}mm, clip: true)[
+    #place(image("${coverImageName}", width: 100%, height: 100%, fit: "cover"))
+    ${frontContent}
+  ]
+]
+`;
+
+  return { source, images: buf ? { [coverImageName]: buf } : {}, dims };
 }
 
 export interface WrapCoverResult {
-  htmlPath: string;
   pdfPath: string;
   dims: WrapCoverDimensions;
 }
@@ -185,11 +199,10 @@ export async function renderWrapCoverPdf(
 ): Promise<WrapCoverResult> {
   const dir = outDir ?? renderWorkDir(project.id);
   fs.mkdirSync(dir, { recursive: true });
-  const { html, dims } = await renderWrapCoverHtml(project, opts);
-  const htmlPath = path.join(dir, 'cover-wrap.html');
+  const { source, images, dims } = await renderWrapCoverTypst(project, opts);
+  const pdfBuf = await compileTypstToPdf({ source, images });
   const pdfPath = path.join(dir, 'cover-wrap.pdf');
-  fs.writeFileSync(htmlPath, html, 'utf-8');
-  await printHtmlToPdf(htmlPath, pdfPath);
+  fs.writeFileSync(pdfPath, pdfBuf);
   await persistOutput(project.id, pdfPath, 'cover-wrap.pdf');
-  return { htmlPath, pdfPath, dims };
+  return { pdfPath, dims };
 }

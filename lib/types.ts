@@ -209,6 +209,8 @@ export interface PreflightResult {
 
 /** 랩 표지 텍스트 편집 설정 (/cover 편집 페이지) — 값이 없으면 wrap.ts 기본값 */
 export interface CoverTextLayout {
+  /** 표지 디자인 템플릿 id (lib/cover/designs.ts COVER_DESIGNS) — 기본: 스타일 기반 추천값 */
+  designId?: string;
   /** 표지 제목 (기본: 프로젝트 제목) */
   titleText?: string;
   authorText?: string;

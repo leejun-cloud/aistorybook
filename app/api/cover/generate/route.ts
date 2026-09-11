@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { loadProject, saveProject } from '../../../../lib/store';
 import { generateCoverOptions, type CoverConcept } from '../../../../lib/cover/generate';
+import { recommendCoverDesign } from '../../../../lib/cover/designs';
 
 export const maxDuration = 300;
 
@@ -21,10 +22,21 @@ export async function POST(req: NextRequest) {
   if (wanted.length === 0) return NextResponse.json({ error: '유효한 concept이 없습니다' }, { status: 400 });
 
   const result = await generateCoverOptions(project, wanted);
+
+  // 표지 디자인(비네트/배너/여백프레임 등)을 아직 안 골랐다면 스타일에 어울리는
+  // 것을 자동 추천해 미리 채워둔다 — 사용자는 /cover에서 다른 디자인으로 바꿀 수 있다.
+  if (!project.publish.coverLayout?.designId) {
+    const recommended = recommendCoverDesign(project.character.style.source, project.character.style.libraryStyleId);
+    project.publish.coverLayout = { ...(project.publish.coverLayout ?? {}), designId: recommended };
+  }
   await saveProject(project);
 
   if (!result.ok) {
     return NextResponse.json({ error: '표지 생성 전량 실패', failures: result.failures }, { status: 502 });
   }
-  return NextResponse.json({ options: result.options, failures: result.failures });
+  return NextResponse.json({
+    options: result.options,
+    failures: result.failures,
+    coverLayout: project.publish.coverLayout,
+  });
 }
