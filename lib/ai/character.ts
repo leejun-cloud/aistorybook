@@ -16,6 +16,7 @@ import {
   CANDIDATE_VARIATIONS,
   STYLE_EXTRACTION_PROMPT,
   candidatePrompt,
+  quickCharacterPrompt,
   dnaExtractionPrompt,
   refinePrompt,
 } from '../prompts/character';
@@ -82,6 +83,22 @@ export async function extractStyleFromReference(
  * 레퍼런스로 함께 전달한다(스타일 컨디셔닝).
  * 일부 실패해도 성공한 후보는 반환한다 (전량 실패 시에만 오류).
  */
+/**
+ * 등장인물 일괄 빠른 생성 — 변주 4장 대신 1장만 만든다 (여러 인물을 한 번에
+ * 채울 때 대기시간을 줄이는 용도). 실패 시 재시도 없음 — 실패하면 그 인물만
+ * 건너뛰고 사용자가 개별적으로 "다른 디자인 4개 보기"를 쓰면 된다.
+ */
+export async function generateCharacterOne(
+  description: string,
+  style: StyleSpec,
+  styleReferenceImages?: Buffer[],
+): Promise<{ ok: true; image: Buffer } | AiFailure> {
+  const refs = styleReferenceImages && styleReferenceImages.length > 0 ? styleReferenceImages : undefined;
+  const res = await generateImage(quickCharacterPrompt(description, style, !!refs), refs);
+  if (!res.ok) return res;
+  return { ok: true, image: res.image.data };
+}
+
 export async function generateCharacterCandidates(
   description: string,
   style: StyleSpec,

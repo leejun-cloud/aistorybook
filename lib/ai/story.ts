@@ -248,7 +248,9 @@ export async function generateStoryDraft(
   const system = buildStorySystemPrompt(metaInput);
   const user = buildStoryUserPrompt(metaInput);
 
-  const n = Math.max(1, Math.min(4, Number(process.env.STORY_DRAFT_CANDIDATES) || 2));
+  // 기본 1개(빠르게) — 마음에 안 들면 "스토리 다시 생성"으로 다시 요청하는 편이
+  // best-of-N 비교보다 체감 대기시간이 짧다. 품질을 우선하려면 env로 올릴 것.
+  const n = Math.max(1, Math.min(4, Number(process.env.STORY_DRAFT_CANDIDATES) || 1));
   const settled = await Promise.allSettled(
     Array.from({ length: n }, () => generateScenesWithContract(system, user, input.sceneCount, 0.9)),
   );

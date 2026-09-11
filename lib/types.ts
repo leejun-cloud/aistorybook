@@ -170,6 +170,12 @@ export interface PageLayout {
     color?: string;
     /** 그림 위 글의 배경 처리 — 'box' 반투명 상자(기본) / 'none' 상자 없이 글로우만 */
     textBox?: 'box' | 'none';
+    /**
+     * 그림 슬롯의 완성도 — 'draft'(후보 1장, DNA 검증 없이 빠르게 채운 임시 미리보기)
+     * vs 'final'(후보 2장 비교 + DNA 일관성 검증까지 거친 인쇄용). 미지정은 'final'
+     * 취급(과거 데이터 호환) — 파트3 진입 시 자동 채워지는 미리보기만 'draft'로 표시된다.
+     */
+    imageQuality?: 'draft' | 'final';
   }[];
   /** 슬롯 편집에서 그림 위치 조정 (§4.1) */
   transform?: { scale: number; offsetX: number; offsetY: number };

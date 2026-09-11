@@ -17,6 +17,7 @@ export function CharacterClient() {
   const [refineNote, setRefineNote] = useState('');
   const [copyrightOk, setCopyrightOk] = useState(false);
   const [showMoreStyles, setShowMoreStyles] = useState(false);
+  const [charProgress, setCharProgress] = useState<{ done: number; total: number; name: string } | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
 
   if (loading) return <div className="p-8 text-gray-400">불러오는 중…</div>;
@@ -138,6 +139,35 @@ export function CharacterClient() {
     }
   };
 
+  // 스타일 선택 즉시 모든 등장인물을 자동 생성한다 — 4장 중 고르는 단계 없이
+  // 1인 1장으로 빠르게 전원 채우고, 마음에 안 드는 인물만 나중에 "다른 디자인
+  // 4개 보기"로 바꾸는 편이 대기시간이 짧다.
+  const quickGenerateAll = async () => {
+    const targets = project.character.characters.filter((c) => !c.confirmed);
+    if (targets.length === 0) return;
+    setBusy('캐릭터 일괄 생성');
+    setMessage(null);
+    for (let i = 0; i < targets.length; i++) {
+      const c = targets[i];
+      setCharProgress({ done: i, total: targets.length, name: c.name });
+      try {
+        const res = await fetch('/api/character/quick', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ projectId: project.id, characterId: c.id }),
+        });
+        if (res.ok) await reload();
+      } catch {
+        /* 이 인물만 건너뛰고 계속 — 나중에 개별적으로 재시도 가능 */
+      }
+    }
+    setCharProgress(null);
+    setBusy(null);
+    setMessage(
+      `등장인물 ${targets.length}명 생성 완료 — 마음에 안 드는 인물은 "다른 디자인 4개 보기"로 바꿀 수 있어요.`,
+    );
+  };
+
   const chooseLibraryStyle = async (id: string) => {
     const entry = STYLE_LIBRARY.find((s) => s.id === id);
     setProject((prev) => ({
@@ -155,6 +185,7 @@ export function CharacterClient() {
       },
     }));
     await save();
+    await quickGenerateAll();
   };
 
   // 출판 사례 프리셋: 스타일 서술 + 분위기 제안 + 조판(글 상자) 기본값까지 복제
@@ -184,6 +215,7 @@ export function CharacterClient() {
     setMessage(
       `"${preset.name}" 적용 — 스타일·분위기 제안·조판(글 ${preset.textBox === 'none' ? '상자 없음' : '반투명 상자'})까지 복제되었습니다.`,
     );
+    await quickGenerateAll();
   };
 
   const approve = async () => {
@@ -210,8 +242,21 @@ export function CharacterClient() {
         </div>
       </div>
 
-      {message && (
+      {message && !charProgress && (
         <div className="border-b border-brand-100 bg-brand-50 px-6 py-2 text-xs text-gray-700">{message}</div>
+      )}
+      {charProgress && (
+        <div className="border-b border-brand-100 bg-brand-50 px-6 py-2 text-xs text-gray-700">
+          <div className="mb-1">
+            캐릭터 생성 중… {charProgress.done}/{charProgress.total} ({charProgress.name})
+          </div>
+          <div className="h-1.5 w-full overflow-hidden rounded-full bg-brand-100">
+            <div
+              className="h-full bg-brand-500 transition-all"
+              style={{ width: `${(charProgress.done / Math.max(1, charProgress.total)) * 100}%` }}
+            />
+          </div>
+        </div>
       )}
 
       <ThreePane
@@ -220,7 +265,18 @@ export function CharacterClient() {
         left={
           <div className="space-y-4">
             <div>
-              <div className="mb-2 text-xs font-semibold text-gray-500">캐릭터</div>
+              <div className="mb-2 flex items-center justify-between">
+                <div className="text-xs font-semibold text-gray-500">캐릭터</div>
+                {project.character.characters.some((c) => !c.confirmed) && (
+                  <button
+                    onClick={quickGenerateAll}
+                    disabled={busy !== null || !isPersisted}
+                    className="rounded border border-brand-300 px-2 py-0.5 text-[11px] font-semibold text-brand-600 hover:bg-brand-50 disabled:opacity-50"
+                  >
+                    {busy === '캐릭터 일괄 생성' ? '생성 중…' : '캐릭터 스타일 생성'}
+                  </button>
+                )}
+              </div>
               <div className="space-y-1">
                 {project.character.characters.map((c) => (
                   <button
@@ -281,14 +337,18 @@ export function CharacterClient() {
                     key={s.id}
                     onClick={() => chooseLibraryStyle(s.id)}
                     className={[
-                      'w-full rounded-lg border p-2 text-left text-xs',
+                      'flex w-full items-center gap-2 rounded-lg border p-2 text-left text-xs',
                       project.character.style.libraryStyleId === s.id && project.character.style.source === 'library'
                         ? 'border-brand-400 bg-brand-50'
                         : 'border-gray-200 hover:border-gray-300',
                     ].join(' ')}
                   >
-                    <div className="font-semibold">{s.name}</div>
-                    <div className="text-gray-500">{s.description}</div>
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img src={s.exampleUrl} alt={s.name} className="h-12 w-12 shrink-0 rounded object-cover" />
+                    <div className="min-w-0">
+                      <div className="font-semibold">{s.name}</div>
+                      <div className="text-gray-500">{s.description}</div>
+                    </div>
                   </button>
                 ))}
                 {topPublished.map((s) => (
@@ -296,15 +356,19 @@ export function CharacterClient() {
                     key={s.id}
                     onClick={() => choosePublishedPreset(s.id)}
                     className={[
-                      'w-full rounded-lg border p-2 text-left text-xs',
+                      'flex w-full items-center gap-2 rounded-lg border p-2 text-left text-xs',
                       project.character.style.libraryStyleId === `published:${s.id}` &&
                       project.character.style.source === 'library'
                         ? 'border-brand-400 bg-brand-50'
                         : 'border-gray-200 hover:border-gray-300',
                     ].join(' ')}
                   >
-                    <div className="font-semibold">{s.name} <span className="text-[10px] text-gray-400">(출판 사례)</span></div>
-                    <div className="text-gray-500">{s.description}</div>
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img src={s.exampleUrl} alt={s.name} className="h-12 w-12 shrink-0 rounded object-cover" />
+                    <div className="min-w-0">
+                      <div className="font-semibold">{s.name} <span className="text-[10px] text-gray-400">(출판 사례)</span></div>
+                      <div className="text-gray-500">{s.description}</div>
+                    </div>
                   </button>
                 ))}
                 {currentStyleIsHidden && !showMoreStyles && (
@@ -329,14 +393,18 @@ export function CharacterClient() {
                             key={s.id}
                             onClick={() => chooseLibraryStyle(s.id)}
                             className={[
-                              'w-full rounded-lg border p-2 text-left text-xs',
+                              'flex w-full items-center gap-2 rounded-lg border p-2 text-left text-xs',
                               project.character.style.libraryStyleId === s.id && project.character.style.source === 'library'
                                 ? 'border-brand-400 bg-brand-50'
                                 : 'border-gray-200 hover:border-gray-300',
                             ].join(' ')}
                           >
-                            <div className="font-semibold">{s.name}</div>
-                            <div className="text-gray-500">{s.description}</div>
+                            {/* eslint-disable-next-line @next/next/no-img-element */}
+                            <img src={s.exampleUrl} alt={s.name} className="h-12 w-12 shrink-0 rounded object-cover" />
+                            <div className="min-w-0">
+                              <div className="font-semibold">{s.name}</div>
+                              <div className="text-gray-500">{s.description}</div>
+                            </div>
                           </button>
                         ))}
                       </div>
@@ -352,17 +420,21 @@ export function CharacterClient() {
                         key={s.id}
                         onClick={() => choosePublishedPreset(s.id)}
                         className={[
-                          'w-full rounded-lg border p-2 text-left text-xs',
+                          'flex w-full items-start gap-2 rounded-lg border p-2 text-left text-xs',
                           project.character.style.libraryStyleId === `published:${s.id}` &&
                           project.character.style.source === 'library'
                             ? 'border-brand-400 bg-brand-50'
                             : 'border-gray-200 hover:border-gray-300',
                         ].join(' ')}
                       >
-                        <div className="font-semibold">{s.name}</div>
-                        <div className="text-gray-500">{s.description}</div>
-                        <div className="mt-0.5 text-[10px] text-gray-400">
-                          분위기: {s.mood} · 글 {s.textBox === 'none' ? '상자 없음' : '반투명 상자'}
+                        {/* eslint-disable-next-line @next/next/no-img-element */}
+                        <img src={s.exampleUrl} alt={s.name} className="h-12 w-12 shrink-0 rounded object-cover" />
+                        <div className="min-w-0">
+                          <div className="font-semibold">{s.name}</div>
+                          <div className="text-gray-500">{s.description}</div>
+                          <div className="mt-0.5 text-[10px] text-gray-400">
+                            분위기: {s.mood} · 글 {s.textBox === 'none' ? '상자 없음' : '반투명 상자'}
+                          </div>
                         </div>
                       </button>
                     ))}
@@ -414,9 +486,10 @@ export function CharacterClient() {
                 <button
                   onClick={() => generateCandidates(character.id, character.name)}
                   disabled={busy !== null || !isPersisted}
+                  title="마음에 안 들면 완전히 다른 디자인 4개를 새로 만들어 고를 수 있어요"
                   className="rounded border border-brand-300 px-2 py-1 text-[11px] font-semibold text-brand-600 hover:bg-brand-50 disabled:opacity-50"
                 >
-                  {busy === '후보 생성' ? '생성 중…' : '후보 다시 생성'}
+                  {busy === '후보 생성' ? '생성 중…' : '다른 디자인 4개 보기'}
                 </button>
               )}
             </div>

@@ -50,30 +50,38 @@ export const PLOT_PATTERNS: PlotPattern[] = [
 
 // prompt: 이미지 생성 프롬프트에 그대로 들어가는 영어 스타일 서술
 // (라이브러리 스타일 선택 시 StyleSpec.description에 대입 — styleClause가 사용)
+// exampleUrl: scripts/gen-style-samples.ts로 한 번 생성해 public/style-samples/에 둔
+// 예시 그림 — 문자 설명만으론 감이 안 와서, 스타일 피커 카드에 실제로 보여준다.
 export const STYLE_LIBRARY = [
   {
     id: 'watercolor', name: '수채화', description: '번짐과 여백을 살린 부드러운 색감',
     prompt: 'soft watercolor with gentle color bleeding, light pencil outlines, generous white space and airy washes',
+    exampleUrl: '/style-samples/watercolor.png',
   },
   {
     id: 'colored-pencil', name: '색연필', description: '따뜻한 질감과 손그림 느낌',
     prompt: 'warm colored-pencil illustration with visible hand-drawn strokes, soft paper grain and cozy muted colors',
+    exampleUrl: '/style-samples/colored-pencil.png',
   },
   {
     id: 'gouache', name: '과슈', description: '불투명한 발색과 또렷한 형태',
     prompt: 'opaque gouache painting with flat vivid color blocks, crisp shapes and subtle brush texture',
+    exampleUrl: '/style-samples/gouache.png',
   },
   {
     id: 'collage', name: '콜라주', description: '종이 질감을 살린 조형적 구성',
     prompt: 'paper-cut collage style with layered textured papers, torn edges and playful geometric composition',
+    exampleUrl: '/style-samples/collage.png',
   },
   {
     id: '3d-soft', name: '3D 소프트', description: '둥글고 포근한 3D 렌더 스타일',
     prompt: 'soft 3D render with rounded plump forms, matte clay-like surfaces and warm gentle studio lighting',
+    exampleUrl: '/style-samples/3d-soft.png',
   },
   {
     id: 'folk', name: '민화풍', description: '한국 전통 민화의 색채와 구도',
     prompt: 'Korean traditional minhwa folk-painting style with bold obangsaek palette, flat decorative composition and ink outlines',
+    exampleUrl: '/style-samples/folk.png',
   },
 ];
 
@@ -91,6 +99,8 @@ export interface PublishedStylePreset {
   mood: string;
   /** 조판 분위기: 그림 위 글 처리 기본값 */
   textBox: 'box' | 'none';
+  /** 스타일 피커 카드에 보여줄 예시 그림 (public/style-samples/) */
+  exampleUrl: string;
 }
 
 export const PUBLISHED_STYLE_PRESETS: PublishedStylePreset[] = [
@@ -103,6 +113,7 @@ export const PUBLISHED_STYLE_PRESETS: PublishedStylePreset[] = [
       'naturalistic botanical detail, soft cream paper background with generous white margins, vintage gentle palette',
     mood: '잔잔하고 고전적인, 오후의 티타임 같은',
     textBox: 'box',
+    exampleUrl: '/style-samples/published-classic-euro-watercolor.png',
   },
   {
     id: 'tissue-collage',
@@ -113,6 +124,7 @@ export const PUBLISHED_STYLE_PRESETS: PublishedStylePreset[] = [
       'visible brush strokes inside each shape, bright saturated primaries on clean white background',
     mood: '경쾌하고 리듬감 있는',
     textBox: 'none',
+    exampleUrl: '/style-samples/published-tissue-collage.png',
   },
   {
     id: 'nordic-flat',
@@ -123,6 +135,7 @@ export const PUBLISHED_STYLE_PRESETS: PublishedStylePreset[] = [
       'no outlines, subtle paper grain, lots of negative space, mid-century picture-book poster feel',
     mood: '담백하고 위트 있는',
     textBox: 'none',
+    exampleUrl: '/style-samples/published-nordic-flat.png',
   },
   {
     id: 'anime-bg-lush',
@@ -133,6 +146,7 @@ export const PUBLISHED_STYLE_PRESETS: PublishedStylePreset[] = [
       'rich greens and sky blues, soft gouache-like rendering, nostalgic summer atmosphere, high background density',
     mood: '뭉클하고 그리운, 여름 방학 같은',
     textBox: 'none',
+    exampleUrl: '/style-samples/published-anime-bg-lush.png',
   },
   {
     id: 'pencil-spot-color',
@@ -143,6 +157,7 @@ export const PUBLISHED_STYLE_PRESETS: PublishedStylePreset[] = [
       'exactly one accent color (warm red) reserved for the emotional focal object, textured sketchbook paper',
     mood: '고요하고 여운이 긴',
     textBox: 'box',
+    exampleUrl: '/style-samples/published-pencil-spot-color.png',
   },
   {
     id: 'oil-pastel-child',
@@ -153,6 +168,7 @@ export const PUBLISHED_STYLE_PRESETS: PublishedStylePreset[] = [
       'drawn with confident intention, saturated joyful colors, visible layering and scribbled backgrounds',
     mood: '천진하고 에너지 넘치는',
     textBox: 'box',
+    exampleUrl: '/style-samples/published-oil-pastel-child.png',
   },
 ];
 

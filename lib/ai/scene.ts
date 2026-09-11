@@ -190,6 +190,31 @@ async function findStyleAnchor(project: Project, currentSceneNumber: number): Pr
 }
 
 /**
+ * 장면 이미지 생성에 쓸 레퍼런스 묶음 — 캐릭터 확정 레퍼런스 → 스타일 참고 이미지
+ * → 스타일 앵커(확정 페이지) 순. generateSceneImageCandidates/generateSceneDraft가 공유.
+ */
+async function buildSceneRefs(
+  project: Project,
+  scene: Scene,
+  characters: Character[],
+): Promise<{ refs: Buffer[]; hasStyleAnchor: boolean }> {
+  const refs: Buffer[] = [];
+  for (const c of characters) {
+    const buf = c.referenceImageUrl ? await readCharacterAsset(project.id, c.referenceImageUrl) : null;
+    if (buf) refs.push(buf);
+  }
+  if (project.character.style.source === 'upload') {
+    for (const url of project.character.style.referenceImageUrls) {
+      const buf = await readCharacterAsset(project.id, url);
+      if (buf) refs.push(buf);
+    }
+  }
+  const anchor = await findStyleAnchor(project, scene.sceneNumber);
+  if (anchor) refs.push(anchor);
+  return { refs, hasStyleAnchor: !!anchor };
+}
+
+/**
  * 장면 하나의 이미지 후보 2장을 생성한다.
  * - 캐릭터 레퍼런스 + 스타일 참고 이미지를 함께 전달 (0단계 검증 방식)
  * - 이미 확정된 페이지가 있으면 그 이미지를 스타일 앵커로 refs 마지막에 추가
@@ -262,11 +287,58 @@ export async function generateSceneImageCandidates(
   return { ok, sceneNumber: scene.sceneNumber, candidates, failures, jobState };
 }
 
+/**
+ * 장면 초안 이미지 1장을 빠르게 생성해 즉시 확정한다 — 후보 비교·DNA 검증 없음.
+ * 파트3 진입 시 전 페이지를 일괄로 빠르게 채우는 용도. 텍스트 슬롯도 함께 채워
+ * 바로 미리보기로 보일 수 있게 한다. 나중에 마음에 들면 그대로, 아니면
+ * generateSceneCandidatesVerified로 개별/일괄 고화질화한다.
+ */
+export async function generateSceneDraft(
+  project: ProjectWithSceneJobs,
+  scene: Scene,
+): Promise<{ ok: true; sceneNumber: number; imageUrl: string } | { ok: false; sceneNumber: number; error: string }> {
+  syncPageSlot(project, scene.sceneNumber, { imageStatus: 'generating' });
+  setJobState(project, scene.sceneNumber, { imageStatus: 'generating' });
+
+  const characters = resolveSceneCharacters(project, scene);
+  const { refs, hasStyleAnchor } = await buildSceneRefs(project, scene, characters);
+  const prompt = buildScenePrompt(project, scene, characters, 0, { hasStyleAnchor });
+  const res = await generateImage(prompt, refs.length > 0 ? refs : undefined);
+
+  if (!res.ok) {
+    setJobState(project, scene.sceneNumber, { imageStatus: 'failed', lastError: res.error.message });
+    syncPageSlot(project, scene.sceneNumber, { imageStatus: 'failed' });
+    return { ok: false, sceneNumber: scene.sceneNumber, error: res.error.message };
+  }
+
+  const name = `scene-${scene.sceneNumber}-draft.png`;
+  const url = await saveCharacterAsset(project.id, name, res.image.data);
+  const candidate: SceneImageCandidate = { id: `scene-${scene.sceneNumber}-draft`, url, upscaled: false };
+  setJobState(project, scene.sceneNumber, { imageStatus: 'ready' });
+  syncPageSlot(project, scene.sceneNumber, {
+    imageStatus: 'ready',
+    candidates: [candidate],
+    imageUrl: url,
+    imageQuality: 'draft',
+  });
+  const page = project.layout.pages.find((p) => p.sceneNumber === scene.sceneNumber);
+  const textSlot = page?.slots.find((s) => s.slotId === 'text-1');
+  if (textSlot) textSlot.text = scene.text;
+  else page?.slots.push({ slotId: 'text-1', text: scene.text });
+
+  return { ok: true, sceneNumber: scene.sceneNumber, imageUrl: url };
+}
+
 /** layout.pages에서 해당 장면의 이미지 슬롯을 찾아 갱신한다. 페이지가 없으면 만든다. */
 function syncPageSlot(
   project: Project,
   sceneNumber: number,
-  patch: { imageStatus?: PageLayout['slots'][number]['imageStatus']; candidates?: SceneImageCandidate[]; imageUrl?: string },
+  patch: {
+    imageStatus?: PageLayout['slots'][number]['imageStatus'];
+    candidates?: SceneImageCandidate[];
+    imageUrl?: string;
+    imageQuality?: PageLayout['slots'][number]['imageQuality'];
+  },
 ): void {
   let page = project.layout.pages.find((p) => p.sceneNumber === sceneNumber);
   if (!page) {
@@ -286,6 +358,7 @@ function syncPageSlot(
   if (patch.imageStatus !== undefined) slot.imageStatus = patch.imageStatus;
   if (patch.candidates !== undefined) slot.candidates = patch.candidates;
   if (patch.imageUrl !== undefined) slot.imageUrl = patch.imageUrl;
+  if (patch.imageQuality !== undefined) slot.imageQuality = patch.imageQuality;
 }
 
 // ---------------------------------------------------------------------------

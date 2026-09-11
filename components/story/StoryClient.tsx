@@ -13,6 +13,18 @@ export function StoryClient() {
   const { project, setProject, loading, saving, isPersisted, save, reload } = useProject();
   const [selectedScene, setSelectedScene] = useState<number>(1);
   const [busy, setBusy] = useState<string | null>(null);
+  const [elapsedSec, setElapsedSec] = useState(0);
+  // busy인 동안 경과 시간을 보여준다 — AI 호출은 진행률을 알 수 없어서, 최소한
+  // "멈춘 게 아니라 진행 중"이라는 걸 초 단위로 보여줘 체감 대기를 줄인다.
+  useEffect(() => {
+    if (busy === null) {
+      setElapsedSec(0);
+      return;
+    }
+    const t0 = Date.now();
+    const id = setInterval(() => setElapsedSec(Math.floor((Date.now() - t0) / 1000)), 1000);
+    return () => clearInterval(id);
+  }, [busy]);
   const [message, setMessage] = useState<string | null>(null);
   const [regenNote, setRegenNote] = useState('');
   const [customCount, setCustomCount] = useState(false);
@@ -31,6 +43,9 @@ export function StoryClient() {
   }, [chatMessages.length, brainstormMode]);
 
   if (loading) return <div className="p-8 text-gray-400">불러오는 중…</div>;
+
+  // busy 중인 버튼 라벨에 경과 초를 붙인다 — "멈춘 게 아니라 진행 중"임을 보여준다.
+  const withElapsed = (label: string) => (elapsedSec > 0 ? `${label} (${elapsedSec}초)` : label);
 
   const scene = project.story.scenes.find((s) => s.sceneNumber === selectedScene) ?? project.story.scenes[0];
   const gatePassed = project.story.qualityGate?.passed === true;
@@ -295,7 +310,7 @@ export function StoryClient() {
               disabled={busy !== null || !isPersisted || !pasteText.trim()}
               className="ml-auto rounded-lg bg-brand-500 px-4 py-2 text-sm font-semibold text-white hover:bg-brand-600 disabled:opacity-50"
             >
-              {busy === '원고 가져오기' ? '나누는 중…' : '장면으로 나누기'}
+              {busy === '원고 가져오기' ? withElapsed('나누는 중…') : '장면으로 나누기'}
             </button>
           </div>
         </div>
@@ -428,7 +443,7 @@ export function StoryClient() {
                 disabled={busy !== null || !isPersisted || !project.story.idea.trim()}
                 className="w-full rounded-lg bg-brand-500 py-2 text-xs font-semibold text-white hover:bg-brand-600 disabled:opacity-50"
               >
-                {busy === '스토리 생성' ? '생성 중… (초안 2개 비교, 1~2분)' : hasStory ? '스토리 다시 생성 (AI)' : '스토리 생성 (AI)'}
+                {busy === '스토리 생성' ? withElapsed('생성 중…') : hasStory ? '스토리 다시 생성 (AI)' : '스토리 생성 (AI)'}
               </button>
             </div>
 
@@ -523,7 +538,7 @@ export function StoryClient() {
                 className="mt-2 w-full rounded-lg border-2 border-brand-500 py-2.5 text-sm font-bold text-brand-600 hover:bg-brand-50 disabled:opacity-50"
               >
                 {busy === '기획안 정리' || busy === '스토리 생성'
-                  ? '정리·생성 중… (1~2분)'
+                  ? withElapsed('정리·생성 중…')
                   : '✨ 정리해서 스토리 만들기 (기획안 → 장면 대본)'}
               </button>
               {project.story.brainstorm?.brief && (
@@ -571,7 +586,7 @@ export function StoryClient() {
                   disabled={busy !== null || !isPersisted || project.story.scenes.length === 0}
                   className="rounded border border-brand-300 px-2 py-1 text-[11px] font-semibold text-brand-600 hover:bg-brand-50 disabled:opacity-50"
                 >
-                  {busy === '품질 게이트' ? '채점·수리 중…' : '게이트 실행'}
+                  {busy === '품질 게이트' ? withElapsed('채점·수리 중…') : '게이트 실행'}
                 </button>
               </div>
               {project.story.qualityGate ? (
@@ -608,7 +623,7 @@ export function StoryClient() {
                     disabled={busy !== null || !isPersisted || !regenNote.trim()}
                     className="w-full rounded-lg border border-gray-200 py-2 font-medium text-gray-600 hover:border-gray-300 disabled:opacity-50"
                   >
-                    {busy === '장면 다시 쓰기' ? '다시 쓰는 중…' : '이 장면 다시 쓰기'}
+                    {busy === '장면 다시 쓰기' ? withElapsed('다시 쓰는 중…') : '이 장면 다시 쓰기'}
                   </button>
                 </>
               )}

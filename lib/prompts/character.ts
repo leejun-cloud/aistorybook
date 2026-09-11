@@ -83,6 +83,26 @@ export const STYLE_REF_ONLY_CLAUSE =
   'Do NOT copy or reuse any character, creature, outfit, clothing, accessory, prop, or composition that appears in them — ' +
   'design a completely new character from the written description alone. ';
 
+/**
+ * 등장인물 일괄 빠른 생성용 — 4가지 실루엣 변주(candidatePrompt) 없이 중립적인
+ * 기본 디자인 1장만 만든다. 여러 인물을 한 번에 빠르게 채우는 용도(다시 만들기는
+ * candidatePrompt의 4-변주 경로를 그대로 쓴다).
+ */
+export function quickCharacterPrompt(
+  description: string,
+  style: StyleSpec,
+  hasStyleReferenceImages = false,
+): string {
+  return (
+    NO_TEXT_IN_IMAGE_PREFIX +
+    (hasStyleReferenceImages ? STYLE_REF_ONLY_CLAUSE : '') +
+    `Children's picture-book character design. Character description: ${description}. ` +
+    'Full body, standing, facing slightly toward the viewer, neutral friendly pose, plain solid off-white background, ' +
+    'centered composition, soft even lighting. This is a character design sheet image, so the character fills most of the frame.' +
+    styleClause(style)
+  );
+}
+
 export function candidatePrompt(
   description: string,
   style: StyleSpec,

@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useProject } from '../../lib/useProject';
 import { StepBar } from '../StepBar';
 import { ThreePane } from '../ThreePane';
@@ -20,6 +20,23 @@ export function LayoutClient() {
   const [busy, setBusy] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
   const [showTemplatePicker, setShowTemplatePicker] = useState(false);
+  const [draftProgress, setDraftProgress] = useState<{ done: number; total: number } | null>(null);
+  const [finalizeProgress, setFinalizeProgress] = useState<{ done: number; total: number } | null>(null);
+  const autoDraftedRef = useRef(false);
+
+  const firstPage = project.layout.pages[0];
+  const firstPageHasAnyImage = !!firstPage?.slots.find((s) => s.slotId === 'image-1')?.imageUrl;
+  const noPageHasImage =
+    project.layout.pages.length > 0 &&
+    project.layout.pages.every((p) => !p.slots.find((s) => s.slotId === 'image-1')?.imageUrl);
+
+  useEffect(() => {
+    if (autoDraftedRef.current) return;
+    if (!isPersisted || loading || !firstPage || firstPageHasAnyImage) return;
+    autoDraftedRef.current = true;
+    void generateDraft(firstPage.sceneNumber);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isPersisted, loading, firstPage?.sceneNumber, firstPageHasAnyImage]);
 
   if (loading) return <div className="p-8 text-gray-400">불러오는 중…</div>;
 
@@ -31,6 +48,10 @@ export function LayoutClient() {
   const allPagesHaveImage =
     project.layout.pages.length > 0 &&
     project.layout.pages.every((p) => p.slots.find((s) => s.slotId === 'image-1')?.imageUrl);
+  const draftPageCount = project.layout.pages.filter(
+    (p) => p.slots.find((s) => s.slotId === 'image-1')?.imageQuality === 'draft',
+  ).length;
+  const allPagesFinal = allPagesHaveImage && draftPageCount === 0;
 
   const post = async (url: string, body: object): Promise<GenerateResponse | null> => {
     const res = await fetch(url, {
@@ -66,7 +87,7 @@ export function LayoutClient() {
     setBusy('후보 확정');
     setMessage(null);
     try {
-      const data = (await post('/api/scene/select', { sceneNumber, candidateId, autoTemplate: true })) as {
+      const data = (await post('/api/scene/select', { sceneNumber, candidateId, autoTemplate: true, imageQuality: 'final' })) as {
         templateId?: string;
         recommendation?: { reason?: string } | null;
       };
@@ -108,7 +129,7 @@ export function LayoutClient() {
             return c?.result.ok ? c.result.score ?? -1 : -1;
           };
           const best = [...cands].sort((a, b) => scoreOf(b.id) - scoreOf(a.id))[0];
-          await post('/api/scene/select', { sceneNumber, candidateId: best.id, autoTemplate: true });
+          await post('/api/scene/select', { sceneNumber, candidateId: best.id, autoTemplate: true, imageQuality: 'final' });
         } else {
           failed.push(sceneNumber);
         }
@@ -121,6 +142,81 @@ export function LayoutClient() {
     setBusy(null);
     setMessage(
       `일괄 생성 완료 — ${targets.length - failed.length}/${targets.length}장면 확정` +
+        (failed.length ? ` (실패: 장면 ${failed.join(', ')} — 개별 재시도 하세요)` : ''),
+    );
+  };
+
+  // 빠른 미리보기 1장 — 후보 비교·DNA 검증 없이 즉시 확정 (분위기 확인용)
+  const generateDraft = async (sceneNumber: number) => {
+    setBusy(`페이지 ${sceneNumber} 미리보기`);
+    setMessage(null);
+    try {
+      await post('/api/scene/draft', { sceneNumber });
+      await reload();
+    } catch (e) {
+      setMessage(`페이지 ${sceneNumber} 미리보기 생성 실패: ${(e as Error).message}`);
+      await reload();
+    } finally {
+      setBusy(null);
+    }
+  };
+
+  // 1페이지 분위기가 마음에 들 때 — 그림이 없는 나머지 페이지를 전부 빠른 미리보기로 채운다.
+  const draftAllRemaining = async () => {
+    const targets = project.layout.pages
+      .filter((p) => !p.slots.find((s) => s.slotId === 'image-1')?.imageUrl)
+      .map((p) => p.sceneNumber)
+      .sort((a, b) => a - b);
+    if (targets.length === 0) return;
+    setBusy('전체 미리보기');
+    setDraftProgress({ done: 0, total: targets.length });
+    for (const sceneNumber of targets) {
+      try {
+        await post('/api/scene/draft', { sceneNumber });
+      } catch {
+        // 실패한 페이지는 비워둔 채 넘어간다 — 개별적으로 다시 시도 가능
+      }
+      setDraftProgress((prev) => (prev ? { ...prev, done: prev.done + 1 } : prev));
+    }
+    await reload();
+    setBusy(null);
+    setDraftProgress(null);
+  };
+
+  // 미리보기 전체를 고화질(후보 2장 + DNA 검증)로 한꺼번에 승격한다.
+  const finalizeAll = async () => {
+    const targets = project.layout.pages
+      .filter((p) => p.slots.find((s) => s.slotId === 'image-1')?.imageQuality === 'draft')
+      .map((p) => p.sceneNumber)
+      .sort((a, b) => a - b);
+    if (targets.length === 0) return;
+    setBusy('고화질 완성');
+    setFinalizeProgress({ done: 0, total: targets.length });
+    const failed: number[] = [];
+    for (const sceneNumber of targets) {
+      try {
+        const data = await post('/api/scene/generate', { sceneNumber });
+        const cands = data?.candidates ?? [];
+        if (cands.length > 0) {
+          const scoreOf = (id: string) => {
+            const c = data?.consistency?.find((x) => x.candidateId === id);
+            return c?.result.ok ? c.result.score ?? -1 : -1;
+          };
+          const best = [...cands].sort((a, b) => scoreOf(b.id) - scoreOf(a.id))[0];
+          await post('/api/scene/select', { sceneNumber, candidateId: best.id, autoTemplate: true, imageQuality: 'final' });
+        } else {
+          failed.push(sceneNumber);
+        }
+      } catch {
+        failed.push(sceneNumber);
+      }
+      setFinalizeProgress((prev) => (prev ? { ...prev, done: prev.done + 1 } : prev));
+    }
+    await reload();
+    setBusy(null);
+    setFinalizeProgress(null);
+    setMessage(
+      `고화질 완성 — ${targets.length - failed.length}/${targets.length}장면 완료` +
         (failed.length ? ` (실패: 장면 ${failed.join(', ')} — 개별 재시도 하세요)` : ''),
     );
   };
@@ -171,6 +267,18 @@ export function LayoutClient() {
           {!isPersisted && (
             <span className="text-xs text-amber-600">목업 미리보기 — 대시보드에서 책을 만들면 저장됩니다</span>
           )}
+          {draftPageCount > 0 && (
+            <button
+              onClick={finalizeAll}
+              disabled={busy !== null || !isPersisted}
+              className="rounded-lg border border-amber-300 px-4 py-2 text-sm font-semibold text-amber-700 hover:bg-amber-50 disabled:opacity-50"
+              title="미리보기(빠른 초안) 페이지를 전부 후보 2장 비교 + DNA 검증까지 거친 고화질본으로 한꺼번에 바꿉니다"
+            >
+              {busy === '고화질 완성'
+                ? `고화질 완성 중… ${finalizeProgress ? `${finalizeProgress.done}/${finalizeProgress.total}` : ''}`
+                : `미리보기 ${draftPageCount}장 고화질로 완성`}
+            </button>
+          )}
           <button
             onClick={generateAll}
             disabled={busy !== null || !isPersisted}
@@ -187,17 +295,48 @@ export function LayoutClient() {
           </button>
           <button
             onClick={approve}
-            disabled={saving || !allPagesHaveImage}
-            title={allPagesHaveImage ? undefined : '모든 장면의 그림을 확정해야 승인할 수 있습니다'}
+            disabled={saving || !allPagesFinal}
+            title={
+              allPagesFinal
+                ? undefined
+                : allPagesHaveImage
+                  ? '미리보기(초안) 페이지를 고화질로 완성해야 승인할 수 있습니다'
+                  : '모든 장면의 그림을 확정해야 승인할 수 있습니다'
+            }
             className="rounded-lg bg-brand-500 px-4 py-2 text-sm font-semibold text-white hover:bg-brand-600 disabled:opacity-60"
           >
-            {project.layout.approved ? '그림·조판 승인됨 ✓' : allPagesHaveImage ? '그림·조판 승인' : '승인 (전체 그림 필요)'}
+            {project.layout.approved ? '그림·조판 승인됨 ✓' : allPagesFinal ? '그림·조판 승인' : '승인 (고화질 완성 필요)'}
           </button>
         </div>
       </div>
 
       {message && (
         <div className="border-b border-brand-100 bg-brand-50 px-6 py-2 text-xs text-gray-700">{message}</div>
+      )}
+
+      {!noPageHasImage && firstPageHasAnyImage && draftProgress === null && draftPageCount > 0 && (
+        <div className="flex items-center justify-between border-b border-amber-100 bg-amber-50 px-6 py-2 text-xs text-gray-700">
+          <span>1페이지 미리보기가 준비됐어요. 이 분위기가 마음에 들면 나머지 페이지도 빠르게 미리보기로 채워보세요.</span>
+          <button
+            onClick={draftAllRemaining}
+            disabled={busy !== null}
+            className="ml-3 shrink-0 rounded border border-amber-400 px-2 py-1 font-semibold text-amber-700 hover:bg-amber-100 disabled:opacity-50"
+          >
+            나머지 페이지 미리보기로 채우기
+          </button>
+        </div>
+      )}
+
+      {draftProgress && (
+        <div className="border-b border-amber-100 bg-amber-50 px-6 py-2 text-xs text-gray-700">
+          전체 미리보기 생성 중… {draftProgress.done}/{draftProgress.total}
+          <div className="mt-1 h-1.5 w-full max-w-xs rounded-full bg-amber-200">
+            <div
+              className="h-1.5 rounded-full bg-amber-500 transition-all"
+              style={{ width: `${(draftProgress.done / draftProgress.total) * 100}%` }}
+            />
+          </div>
+        </div>
       )}
 
       <ThreePane
@@ -207,7 +346,13 @@ export function LayoutClient() {
           <ul className="space-y-1">
             {project.layout.pages.map((p) => {
               const img = p.slots.find((s) => s.slotId === 'image-1');
-              const status = img?.imageUrl ? '✓' : (img?.candidates?.length ?? 0) > 0 ? '후보' : '';
+              const status = img?.imageUrl
+                ? img.imageQuality === 'draft'
+                  ? '미리보기'
+                  : '✓'
+                : (img?.candidates?.length ?? 0) > 0
+                  ? '후보'
+                  : '';
               return (
                 <li key={p.sceneNumber}>
                   <button
@@ -218,7 +363,12 @@ export function LayoutClient() {
                     ].join(' ')}
                   >
                     <span>페이지 {p.sceneNumber}</span>
-                    <span className={['text-xs', status === '✓' ? 'text-green-600' : 'text-gray-400'].join(' ')}>
+                    <span
+                      className={[
+                        'text-xs',
+                        status === '✓' ? 'text-green-600' : status === '미리보기' ? 'text-amber-600' : 'text-gray-400',
+                      ].join(' ')}
+                    >
                       {status || p.templateId}
                     </span>
                   </button>
@@ -230,7 +380,14 @@ export function LayoutClient() {
         center={
           page ? (
             <div>
-              <h1 className="mb-3 text-lg font-bold">펼침면 미리보기 · 페이지 {page.sceneNumber}</h1>
+              <h1 className="mb-3 flex items-center gap-2 text-lg font-bold">
+                펼침면 미리보기 · 페이지 {page.sceneNumber}
+                {imageSlotData?.imageQuality === 'draft' && (
+                  <span className="rounded-full bg-amber-100 px-2 py-0.5 text-xs font-medium text-amber-700">
+                    빠른 미리보기 (초안)
+                  </span>
+                )}
+              </h1>
               <div className="relative aspect-square w-full max-w-xl overflow-hidden rounded-xl border border-gray-200 bg-gray-50">
                 {template?.slots.map((slot) => {
                   const data = page.slots.find((s) => s.slotId === slot.id);
@@ -293,9 +450,29 @@ export function LayoutClient() {
         }
         right={
           <div className="space-y-5 text-sm">
+            <div className="rounded-lg border border-amber-200 bg-amber-50/40 p-3">
+              <div className="mb-1 flex items-center justify-between">
+                <span className="font-semibold">빠른 미리보기</span>
+                <button
+                  onClick={() => page && generateDraft(page.sceneNumber)}
+                  disabled={busy !== null || !isPersisted || !page}
+                  className="rounded border border-amber-300 px-2 py-1 text-[11px] font-semibold text-amber-700 hover:bg-amber-100 disabled:opacity-50"
+                >
+                  {busy === `페이지 ${page?.sceneNumber} 미리보기`
+                    ? '생성 중…'
+                    : imageSlotData?.imageUrl
+                      ? '다시 미리보기'
+                      : '빠르게 그림 만들기'}
+                </button>
+              </div>
+              <p className="text-[11px] text-gray-500">
+                후보 비교·DNA 검증 없이 1장만 빠르게 만들어 분위기를 확인합니다. 마음에 안 들면 다시 눌러보세요.
+              </p>
+            </div>
+
             <div className="rounded-lg border border-gray-200 p-3">
               <div className="mb-2 flex items-center justify-between">
-                <span className="font-semibold">그림 후보 (2구도)</span>
+                <span className="font-semibold">그림 후보 (2구도, 고화질)</span>
                 <button
                   onClick={() => page && generateScene(page.sceneNumber)}
                   disabled={busy !== null || !isPersisted || !page}

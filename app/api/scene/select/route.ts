@@ -14,7 +14,7 @@ export const maxDuration = 120;
 // → 후보 1장을 확정. templateId를 주면 그대로, autoTemplate이면 Gemini 추천
 //   (같은 템플릿 3연속 방지는 코드 규칙).
 export async function POST(req: NextRequest) {
-  const { projectId, sceneNumber, candidateId, templateId, autoTemplate } = await req
+  const { projectId, sceneNumber, candidateId, templateId, autoTemplate, imageQuality } = await req
     .json()
     .catch(() => ({}));
   if (!projectId || typeof sceneNumber !== 'number' || !candidateId) {
@@ -29,6 +29,10 @@ export async function POST(req: NextRequest) {
   if (!selected.ok) return NextResponse.json({ error: selected.error }, { status: 404 });
 
   const page = project.layout.pages.find((p) => p.sceneNumber === sceneNumber)!;
+  if (imageQuality === 'draft' || imageQuality === 'final') {
+    const slot = page.slots.find((s) => s.slotId === 'image-1');
+    if (slot) slot.imageQuality = imageQuality;
+  }
   let recommendation = null;
   if (templateId) {
     page.templateId = templateId;
