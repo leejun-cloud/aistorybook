@@ -23,6 +23,7 @@ import { readCharacterAsset } from '../ai/character';
 import { persistOutput, renderWorkDir } from '../render/pdf';
 import { assetNameFromUrl, printVariantName } from '../render/upscale';
 import { compileTypstToPdf, typstText } from '../render/typst';
+import { renderIsbnBarcodeTypst, barcodeBox } from './barcode';
 import { getCoverDesign } from './designs';
 import type { PrintProfile } from './profiles';
 import type { SpineResult } from './spine';
@@ -142,6 +143,15 @@ export async function renderWrapCoverTypst(
   const spineW = spine.spineMm;
   const frontW = frontWidthMm;
 
+  // ISBN 바코드 — 뒷표지 우하단. 재단선에서 안전영역만큼 띄운다.
+  const barcodeContent = layout.showBarcode === false ? null : renderIsbnBarcodeTypst(layout.isbn);
+  const bcBox = barcodeBox();
+  const barcode = barcodeContent
+    ? `#place(dx: ${(backW - profile.trim.width + (profile.trim.width - bcBox.widthMm) / 2).toFixed(2)}mm, dy: ${(dims.pageHeight - b - profile.safeArea - bcBox.heightMm).toFixed(2)}mm)[
+${barcodeContent}
+]`
+    : '';
+
   const source = `
 #set page(width: ${dims.pageWidth}mm, height: ${dims.pageHeight}mm, margin: 0mm, fill: rgb("#f4ead9"))
 #set text(font: "Pretendard")
@@ -159,6 +169,7 @@ export async function renderWrapCoverTypst(
   ]
 ]
 
+${barcode}
 // ── 책등 ──────────────────────────────────────────────────────
 #place(dx: ${backW}mm, dy: 0mm, rect(width: ${spineW}mm, height: ${dims.pageHeight}mm, fill: rgb("${design.spineBg}")))
 ${
