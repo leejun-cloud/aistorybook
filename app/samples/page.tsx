@@ -1,10 +1,13 @@
 import Link from 'next/link';
+import { BusinessFooter } from '../../components/BusinessFooter';
 import { PUBLISHED_STYLE_PRESETS, STYLE_LIBRARY } from '../../lib/demo';
 
 export const metadata = { title: '화풍 도감 — AI 동화제작' };
+export const dynamic = 'force-dynamic';
 
 export default function SamplesPage() {
   return (
+    <>
     <main className="mx-auto w-full max-w-5xl flex-1 overflow-y-auto px-6 py-12">
       <h1 className="font-display text-3xl font-bold text-ink-800">화풍 도감</h1>
       <p className="mt-2 max-w-2xl text-sm leading-relaxed text-ink-600">
@@ -70,5 +73,7 @@ export default function SamplesPage() {
         </Link>
       </div>
     </main>
+    <BusinessFooter />
+    </>
   );
 }

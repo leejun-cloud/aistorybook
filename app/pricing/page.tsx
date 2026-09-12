@@ -1,6 +1,8 @@
 import { CreditPackList } from '../../components/CreditPackList';
+import { BusinessFooter } from '../../components/BusinessFooter';
 
 export const metadata = { title: '이용권 — AI 동화제작' };
+export const dynamic = 'force-dynamic';
 
 const INCLUDED = [
   '장면 그림 생성과 재생성, 레이아웃 조판',
@@ -11,6 +13,7 @@ const INCLUDED = [
 
 export default function PricingPage() {
   return (
+    <>
     <main className="mx-auto w-full max-w-4xl flex-1 overflow-y-auto px-6 py-12">
       <h1 className="font-display text-3xl font-bold text-ink-800">이용권</h1>
       <p className="mt-2 max-w-2xl text-sm leading-relaxed text-ink-600">
@@ -40,5 +43,7 @@ export default function PricingPage() {
         있습니다.
       </p>
     </main>
+    <BusinessFooter />
+    </>
   );
 }

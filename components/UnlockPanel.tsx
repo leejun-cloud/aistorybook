@@ -1,7 +1,8 @@
 'use client';
 
 import { useCallback, useEffect, useState } from 'react';
-import { CREDIT_PACKS, formatWon, perUnit } from '../lib/pricing';
+import { CREDIT_PACKS, formatWon, getPack, perUnit } from '../lib/pricing';
+import { PurchaseConsent } from './PurchaseConsent';
 
 interface Props {
   projectId: string;
@@ -19,6 +20,8 @@ export function UnlockPanel({ projectId, projectTitle, unlockedAt, onUnlocked }:
   const [credits, setCredits] = useState<number | null>(null);
   const [busy, setBusy] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [selected, setSelected] = useState<string>('single');
+  const [agreed, setAgreed] = useState(false);
 
   const refresh = useCallback(() => {
     fetch('/api/credits')
@@ -62,6 +65,11 @@ export function UnlockPanel({ projectId, projectTitle, unlockedAt, onUnlocked }:
   };
 
   const buy = async (packId: string) => {
+    setSelected(packId);
+    if (!agreed) {
+      setError('결제를 진행하려면 구매 조건에 동의해 주세요.');
+      return;
+    }
     setBusy(packId);
     setError(null);
     try {
@@ -145,6 +153,12 @@ export function UnlockPanel({ projectId, projectTitle, unlockedAt, onUnlocked }:
             ))}
           </ul>
         </>
+      )}
+
+      {(credits === null || credits < 1) && (
+        <div className="mt-5">
+          <PurchaseConsent pack={getPack(selected) ?? null} checked={agreed} onChange={setAgreed} />
+        </div>
       )}
 
       {error && <p className="mt-3 rounded-lg bg-red-50 p-2.5 text-xs text-red-600">{error}</p>}

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createOrder } from '../../../../lib/credits';
 import { getPack } from '../../../../lib/pricing';
 import { paymentsConfigured, tossClientKey } from '../../../../lib/payments/config';
+import { businessInfoComplete } from '../../../../lib/legal/business';
 
 // POST /api/credits/order  body: { packId }
 // → 결제창을 띄우기 전 주문을 pending으로 생성한다. 금액은 서버의 CREDIT_PACKS가
@@ -10,6 +11,14 @@ export async function POST(req: NextRequest) {
   const { packId } = await req.json().catch(() => ({}));
   const pack = getPack(packId);
   if (!pack) return NextResponse.json({ error: '알 수 없는 상품입니다' }, { status: 400 });
+
+  // 전자상거래법 제10조 — 사업자 정보를 표시하지 못하는 상태로는 판매하지 않는다
+  if (!businessInfoComplete()) {
+    return NextResponse.json(
+      { error: '사업자 정보가 등록되지 않아 결제를 진행할 수 없습니다. 운영자에게 문의해 주세요.' },
+      { status: 503 },
+    );
+  }
 
   if (!paymentsConfigured()) {
     return NextResponse.json(

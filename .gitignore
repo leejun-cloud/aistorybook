@@ -6,6 +6,7 @@ projects/
 *.tsbuildinfo
 .DS_Store
 references/
+account/
 firebase-debug.log
 .vercel
 .env*

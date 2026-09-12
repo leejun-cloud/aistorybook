@@ -1,7 +1,9 @@
 import Link from 'next/link';
+import { BusinessFooter } from '../../components/BusinessFooter';
 import { PART_LABELS, PART_ORDER, ProjectPartKey } from '../../lib/types';
 
 export const metadata = { title: '제작 과정 — AI 동화제작' };
+export const dynamic = 'force-dynamic';
 
 const GUIDE: Record<ProjectPartKey, { summary: string; items: string[] }> = {
   story: {
@@ -44,6 +46,7 @@ const GUIDE: Record<ProjectPartKey, { summary: string; items: string[] }> = {
 
 export default function GuidePage() {
   return (
+    <>
     <main className="mx-auto w-full max-w-3xl flex-1 overflow-y-auto px-6 py-12">
       <h1 className="font-display text-3xl font-bold text-ink-800">제작 과정</h1>
       <p className="mt-2 text-sm leading-relaxed text-ink-600">
@@ -82,5 +85,7 @@ export default function GuidePage() {
         </Link>
       </div>
     </main>
+    <BusinessFooter />
+    </>
   );
 }

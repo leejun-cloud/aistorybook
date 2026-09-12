@@ -2,6 +2,7 @@ import Link from 'next/link';
 import { STYLE_LIBRARY, PUBLISHED_STYLE_PRESETS, PLOT_PATTERNS } from '../lib/demo';
 import { CREDIT_PACKS, formatWon, perUnit } from '../lib/pricing';
 import { PART_LABELS, PART_ORDER, ProjectPartKey } from '../lib/types';
+import { BusinessFooter } from '../components/BusinessFooter';
 
 const STEPS: Record<ProjectPartKey, { lead: string; detail: string }> = {
   story: {
@@ -40,6 +41,8 @@ const CRAFT = [
     body: '글이 상자를 넘치는지 Typst로 실제 조판해 mm 단위로 잽니다. 넘치면 글자 크기를 재실측하며 줄이고, 해상도가 낮으면 300dpi 변형본을 만듭니다.',
   },
 ];
+
+export const dynamic = 'force-dynamic';
 
 export default function LandingPage() {
   const styles = [...STYLE_LIBRARY.slice(0, 3), ...PUBLISHED_STYLE_PRESETS.slice(0, 3)];
@@ -246,17 +249,7 @@ export default function LandingPage() {
         </div>
       </section>
 
-      <footer className="border-t border-paper-200 bg-paper-50 px-6 py-12">
-        <div className="mx-auto flex max-w-5xl flex-wrap items-center justify-between gap-4 text-xs text-ink-400">
-          <span className="font-display text-sm text-ink-600">AI 동화제작</span>
-          <nav className="flex gap-5">
-            <Link href="/samples" className="hover:text-ink-600">화풍 도감</Link>
-            <Link href="/guide" className="hover:text-ink-600">제작 과정</Link>
-            <Link href="/pricing" className="hover:text-ink-600">이용권</Link>
-            <Link href="/dashboard" className="hover:text-ink-600">내 작업실</Link>
-          </nav>
-        </div>
-      </footer>
+      <BusinessFooter />
     </main>
   );
 }
