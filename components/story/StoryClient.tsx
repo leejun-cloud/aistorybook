@@ -35,6 +35,11 @@ export function StoryClient() {
   // 스토리가 이미 있으면(재편집) 갈래 선택을 건너뛰고 바로 편집 화면으로.
   const [entryMode, setEntryMode] = useState<'idea' | 'brainstorm' | 'paste' | null>(null);
   const [pasteText, setPasteText] = useState('');
+  // 아이디어 화면 진입 시 설정(연령·분량·느낌·플롯패턴)은 기본값으로 접어두고,
+  // 아이디어 한 줄만 쓰면 바로 생성한다 — 세부 조절은 드물게만 필요하다.
+  const [showIdeaSettings, setShowIdeaSettings] = useState(false);
+  // 스토리가 나온 뒤에도 같은 이유로 설정 블록은 접어두고 요약만 보여준다.
+  const [showStorySettings, setShowStorySettings] = useState(false);
 
   const chatMessages = project.story.brainstorm?.messages ?? [];
   // 새 메시지가 오면 채팅 맨 아래로
@@ -318,6 +323,113 @@ export function StoryClient() {
     );
   }
 
+  // "아이디어만 던지기" — 아이디어 한 줄만 받고 나머지는 기본값으로 바로 생성한다.
+  // 연령·분량·느낌·플롯패턴은 대부분 다시 바꿔가며 재생성하지 않으므로 접어둔다.
+  if (!hasStory && entryMode === 'idea') {
+    return (
+      <div className="flex flex-1 flex-col overflow-hidden">
+        <div className="flex items-center justify-between border-b border-gray-200 bg-white px-6 py-3">
+          <StepBar project={project} active="story" />
+          <button
+            onClick={() => setEntryMode(null)}
+            className="rounded-lg border border-gray-200 px-3 py-1.5 text-xs text-gray-500 hover:border-gray-300"
+          >
+            ← 다른 방법으로 시작
+          </button>
+        </div>
+        {message && (
+          <div className="border-b border-brand-100 bg-brand-50 px-6 py-2 text-xs text-gray-700">{message}</div>
+        )}
+        <div className="mx-auto w-full max-w-xl flex-1 overflow-y-auto p-6">
+          <h1 className="mb-1 text-lg font-bold">아이디어만 던지기</h1>
+          <p className="mb-4 text-xs text-gray-500">
+            한 줄만 써주시면 AI가 나머지(연령·분량·느낌·플롯)를 기본값으로 채워 바로 스토리를 씁니다.
+          </p>
+          <textarea
+            value={project.story.idea}
+            onChange={(e) => patchStory({ idea: e.target.value })}
+            rows={4}
+            placeholder="예: 겁 많은 아기 토끼가 폭풍 속에서 친구를 구하는 이야기"
+            className="w-full resize-none rounded-lg border border-gray-300 p-3 text-sm leading-relaxed"
+          />
+
+          <button
+            onClick={() => setShowIdeaSettings((v) => !v)}
+            className="mt-3 text-xs text-gray-500 underline hover:text-gray-700"
+          >
+            {showIdeaSettings ? '세부 설정 접기' : `세부 설정 (연령 ${project.story.targetAge} · ${project.story.sceneCount}장면 · "${project.story.desiredMood}")`}
+          </button>
+
+          {showIdeaSettings && (
+            <div className="mt-3 space-y-2 rounded-lg border border-gray-200 p-3 text-xs">
+              <label className="block text-gray-500">
+                대상 연령
+                <input
+                  type="text"
+                  value={project.story.targetAge}
+                  onChange={(e) => patchStory({ targetAge: e.target.value })}
+                  className="mt-1 w-full rounded border border-gray-300 p-1.5"
+                />
+              </label>
+              <label className="block text-gray-500">
+                분량
+                <select
+                  value={SCENE_COUNT_PRESETS.includes(project.story.sceneCount) ? project.story.sceneCount : 'custom'}
+                  onChange={(e) => {
+                    if (e.target.value !== 'custom') patchStory({ sceneCount: Number(e.target.value) });
+                  }}
+                  className="mt-1 w-full rounded border border-gray-300 p-1.5"
+                >
+                  {SCENE_COUNT_PRESETS.map((n) => (
+                    <option key={n} value={n}>{n}장면</option>
+                  ))}
+                  <option value="custom">직접 입력…</option>
+                </select>
+              </label>
+              <label className="block text-gray-500">
+                원하는 느낌
+                <input
+                  type="text"
+                  value={project.story.desiredMood}
+                  onChange={(e) => patchStory({ desiredMood: e.target.value })}
+                  className="mt-1 w-full rounded border border-gray-300 p-1.5"
+                />
+              </label>
+              <div>
+                <div className="mb-1 text-gray-500">플롯 패턴 (비우면 AI 자동 선택)</div>
+                <div className="space-y-1.5">
+                  {PLOT_PATTERNS.map((p) => {
+                    const selected = project.story.selectedPatternIds.includes(p.id);
+                    return (
+                      <button
+                        key={p.id}
+                        onClick={() => togglePattern(p.id)}
+                        className={[
+                          'w-full rounded border p-2 text-left',
+                          selected ? 'border-brand-400 bg-brand-50' : 'border-gray-200 hover:border-gray-300',
+                        ].join(' ')}
+                      >
+                        <div className="font-semibold">{p.name}</div>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            </div>
+          )}
+
+          <button
+            onClick={generateStory}
+            disabled={busy !== null || !isPersisted || !project.story.idea.trim()}
+            className="mt-4 w-full rounded-lg bg-brand-500 py-2.5 text-sm font-semibold text-white hover:bg-brand-600 disabled:opacity-50"
+          >
+            {busy === '스토리 생성' ? withElapsed('생성 중…') : '스토리 만들기'}
+          </button>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="flex flex-1 flex-col overflow-hidden">
       <div className="flex items-center justify-between border-b border-gray-200 bg-white px-6 py-3">
@@ -373,101 +485,117 @@ export function StoryClient() {
                 장면 카드로 돌아가기
               </button>
             )}
-            <div className="space-y-2 text-xs">
-              <label className="block text-gray-500">
-                아이디어
-                <textarea
-                  value={project.story.idea}
-                  onChange={(e) => patchStory({ idea: e.target.value })}
-                  rows={3}
-                  placeholder="예: 겁 많은 아기 토끼가 폭풍 속에서 친구를 구하는 이야기"
-                  className="mt-1 w-full resize-none rounded border border-gray-300 p-2"
-                />
-              </label>
-              <label className="block text-gray-500">
-                대상 연령
-                <input
-                  type="text"
-                  value={project.story.targetAge}
-                  onChange={(e) => patchStory({ targetAge: e.target.value })}
-                  className="mt-1 w-full rounded border border-gray-300 p-1.5"
-                />
-              </label>
-              <label className="block text-gray-500">
-                분량
-                <select
-                  value={SCENE_COUNT_PRESETS.includes(project.story.sceneCount) ? project.story.sceneCount : 'custom'}
-                  onChange={(e) => {
-                    if (e.target.value === 'custom') setCustomCount(true);
-                    else {
-                      setCustomCount(false);
-                      patchStory({ sceneCount: Number(e.target.value) });
-                    }
-                  }}
-                  className="mt-1 w-full rounded border border-gray-300 p-1.5"
+            <div className="rounded-lg border border-gray-200 p-2.5 text-xs">
+              <div className="flex items-center justify-between">
+                <span className="text-gray-500">
+                  {project.story.targetAge} · {project.story.sceneCount}장면 · &ldquo;{project.story.desiredMood}&rdquo;
+                </span>
+                <button
+                  onClick={() => setShowStorySettings((v) => !v)}
+                  className="shrink-0 rounded border border-gray-200 px-2 py-0.5 text-[11px] text-gray-500 hover:border-gray-300"
                 >
-                  {SCENE_COUNT_PRESETS.map((n) => (
-                    <option key={n} value={n}>{n}장면</option>
-                  ))}
-                  <option value="custom">직접 입력…</option>
-                </select>
-              </label>
-              {(customCount || !SCENE_COUNT_PRESETS.includes(project.story.sceneCount)) && (
+                  {showStorySettings ? '접기' : '설정 바꾸기'}
+                </button>
+              </div>
+              <p className="mt-1 text-[11px] text-gray-400">이 설정으로 다시 쓰는 일은 드물어요 — 필요할 때만 펼치세요.</p>
+            </div>
+
+            {showStorySettings && (
+              <div className="space-y-2 text-xs">
                 <label className="block text-gray-500">
-                  장면 수 직접 입력 (4~40)
+                  아이디어
+                  <textarea
+                    value={project.story.idea}
+                    onChange={(e) => patchStory({ idea: e.target.value })}
+                    rows={3}
+                    placeholder="예: 겁 많은 아기 토끼가 폭풍 속에서 친구를 구하는 이야기"
+                    className="mt-1 w-full resize-none rounded border border-gray-300 p-2"
+                  />
+                </label>
+                <label className="block text-gray-500">
+                  대상 연령
                   <input
-                    type="number"
-                    min={4}
-                    max={40}
-                    value={project.story.sceneCount}
-                    onChange={(e) => {
-                      const n = Math.round(Number(e.target.value));
-                      if (Number.isFinite(n)) patchStory({ sceneCount: Math.min(40, Math.max(4, n)) });
-                    }}
+                    type="text"
+                    value={project.story.targetAge}
+                    onChange={(e) => patchStory({ targetAge: e.target.value })}
                     className="mt-1 w-full rounded border border-gray-300 p-1.5"
                   />
                 </label>
-              )}
-              <label className="block text-gray-500">
-                원하는 느낌
-                <input
-                  type="text"
-                  value={project.story.desiredMood}
-                  onChange={(e) => patchStory({ desiredMood: e.target.value })}
-                  placeholder="예: 조마조마하다가 뭉클하게"
-                  className="mt-1 w-full rounded border border-gray-300 p-1.5"
-                />
-              </label>
-              <button
-                onClick={generateStory}
-                disabled={busy !== null || !isPersisted || !project.story.idea.trim()}
-                className="w-full rounded-lg bg-brand-500 py-2 text-xs font-semibold text-white hover:bg-brand-600 disabled:opacity-50"
-              >
-                {busy === '스토리 생성' ? withElapsed('생성 중…') : hasStory ? '스토리 다시 생성 (AI)' : '스토리 생성 (AI)'}
-              </button>
-            </div>
-
-            <div>
-              <div className="mb-2 text-xs font-semibold text-gray-500">플롯 패턴 (비우면 AI 자동 선택)</div>
-              <div className="space-y-2">
-                {PLOT_PATTERNS.map((p) => {
-                  const selected = project.story.selectedPatternIds.includes(p.id);
-                  return (
-                    <button
-                      key={p.id}
-                      onClick={() => togglePattern(p.id)}
-                      className={[
-                        'w-full rounded-lg border p-3 text-left text-sm transition-colors',
-                        selected ? 'border-brand-400 bg-brand-50' : 'border-gray-200 hover:border-gray-300',
-                      ].join(' ')}
-                    >
-                      <div className="font-semibold">{p.name}</div>
-                      <div className="mt-1 text-xs text-gray-500">{p.description}</div>
-                    </button>
-                  );
-                })}
+                <label className="block text-gray-500">
+                  분량
+                  <select
+                    value={SCENE_COUNT_PRESETS.includes(project.story.sceneCount) ? project.story.sceneCount : 'custom'}
+                    onChange={(e) => {
+                      if (e.target.value === 'custom') setCustomCount(true);
+                      else {
+                        setCustomCount(false);
+                        patchStory({ sceneCount: Number(e.target.value) });
+                      }
+                    }}
+                    className="mt-1 w-full rounded border border-gray-300 p-1.5"
+                  >
+                    {SCENE_COUNT_PRESETS.map((n) => (
+                      <option key={n} value={n}>{n}장면</option>
+                    ))}
+                    <option value="custom">직접 입력…</option>
+                  </select>
+                </label>
+                {(customCount || !SCENE_COUNT_PRESETS.includes(project.story.sceneCount)) && (
+                  <label className="block text-gray-500">
+                    장면 수 직접 입력 (4~40)
+                    <input
+                      type="number"
+                      min={4}
+                      max={40}
+                      value={project.story.sceneCount}
+                      onChange={(e) => {
+                        const n = Math.round(Number(e.target.value));
+                        if (Number.isFinite(n)) patchStory({ sceneCount: Math.min(40, Math.max(4, n)) });
+                      }}
+                      className="mt-1 w-full rounded border border-gray-300 p-1.5"
+                    />
+                  </label>
+                )}
+                <label className="block text-gray-500">
+                  원하는 느낌
+                  <input
+                    type="text"
+                    value={project.story.desiredMood}
+                    onChange={(e) => patchStory({ desiredMood: e.target.value })}
+                    placeholder="예: 조마조마하다가 뭉클하게"
+                    className="mt-1 w-full rounded border border-gray-300 p-1.5"
+                  />
+                </label>
+                <div>
+                  <div className="mb-2 text-xs font-semibold text-gray-500">플롯 패턴 (비우면 AI 자동 선택)</div>
+                  <div className="space-y-2">
+                    {PLOT_PATTERNS.map((p) => {
+                      const selected = project.story.selectedPatternIds.includes(p.id);
+                      return (
+                        <button
+                          key={p.id}
+                          onClick={() => togglePattern(p.id)}
+                          className={[
+                            'w-full rounded-lg border p-3 text-left text-sm transition-colors',
+                            selected ? 'border-brand-400 bg-brand-50' : 'border-gray-200 hover:border-gray-300',
+                          ].join(' ')}
+                        >
+                          <div className="font-semibold">{p.name}</div>
+                          <div className="mt-1 text-xs text-gray-500">{p.description}</div>
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+                <button
+                  onClick={generateStory}
+                  disabled={busy !== null || !isPersisted || !project.story.idea.trim()}
+                  className="w-full rounded-lg bg-brand-500 py-2 text-xs font-semibold text-white hover:bg-brand-600 disabled:opacity-50"
+                >
+                  {busy === '스토리 생성' ? withElapsed('생성 중…') : '스토리 다시 생성 (AI)'}
+                </button>
               </div>
-            </div>
+            )}
           </div>
         }
         center={
