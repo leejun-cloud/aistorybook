@@ -144,7 +144,9 @@ export async function renderWrapCoverTypst(
   const frontW = frontWidthMm;
 
   // ISBN 바코드 — 뒷표지 우하단. 재단선에서 안전영역만큼 띄운다.
-  const barcodeContent = layout.showBarcode === false ? null : renderIsbnBarcodeTypst(layout.isbn);
+  // ISBN은 유통 서지정보(publish.meta)가 정본 — 표지 편집에서 따로 넣었으면 그 값 우선
+  const isbn = layout.isbn ?? project.publish.meta?.isbn;
+  const barcodeContent = layout.showBarcode === false ? null : renderIsbnBarcodeTypst(isbn);
   const bcBox = barcodeBox();
   const barcode = barcodeContent
     ? `#place(dx: ${(backW - profile.trim.width + (profile.trim.width - bcBox.widthMm) / 2).toFixed(2)}mm, dy: ${(dims.pageHeight - b - profile.safeArea - bcBox.heightMm).toFixed(2)}mm)[
