@@ -10,3 +10,10 @@ account/
 firebase-debug.log
 .vercel
 .env*
+
+# mvpkit firebase: 비밀파일 (커밋 금지)
+.env
+.env.local
+*serviceAccount*.json
+*service-account*.json
+*firebase-adminsdk*.json

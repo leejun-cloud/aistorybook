@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { loadProject, saveProject } from '../../../../lib/store';
+import { saveProject } from '../../../../lib/store';
+import { loadOwnedProject } from '../../../../lib/auth/require';
 import { regenerateScene } from '../../../../lib/ai/story';
 
 export const maxDuration = 120;
@@ -15,8 +16,9 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'projectId, sceneNumber, note 필수' }, { status: 400 });
   }
 
-  const project = await loadProject(projectId);
-  if (!project) return NextResponse.json({ error: 'project 없음' }, { status: 404 });
+  const owned = await loadOwnedProject(projectId);
+  if ('error' in owned) return owned.error;
+  const project = owned.project;
 
   const idx = project.story.scenes.findIndex((s) => s.sceneNumber === sceneNumber);
   if (idx < 0) return NextResponse.json({ error: `장면 ${sceneNumber} 없음` }, { status: 404 });

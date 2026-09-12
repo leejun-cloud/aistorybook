@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { loadProject, saveProject } from '../../../../lib/store';
+import { saveProject } from '../../../../lib/store';
+import { loadOwnedProject } from '../../../../lib/auth/require';
 import { extractStyleFromReference, saveCharacterAsset } from '../../../../lib/ai/character';
 
 export const maxDuration = 300;
@@ -24,8 +25,9 @@ export async function POST(req: NextRequest) {
   if (files.length === 0 || files.length > 3) {
     return NextResponse.json({ error: '참고 그림은 1~3장이어야 합니다' }, { status: 400 });
   }
-  const project = await loadProject(projectId);
-  if (!project) return NextResponse.json({ error: 'project 없음' }, { status: 404 });
+  const owned = await loadOwnedProject(projectId);
+  if ('error' in owned) return owned.error;
+  const project = owned.project;
 
   const buffers: Buffer[] = [];
   const urls: string[] = [];

@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { loadProject, saveProject } from '../../../../lib/store';
+import { saveProject } from '../../../../lib/store';
+import { loadOwnedProject } from '../../../../lib/auth/require';
 import type { PageLayout } from '../../../../lib/types';
 
 // 슬롯 편집 API (PRD §4.1 — 정해진 슬롯 안에서만 조정).
@@ -23,8 +24,9 @@ export async function POST(req: NextRequest) {
   if (!projectId || typeof sceneNumber !== 'number') {
     return NextResponse.json({ error: 'projectId, sceneNumber가 필요합니다' }, { status: 400 });
   }
-  const project = await loadProject(projectId);
-  if (!project) return NextResponse.json({ error: 'project 없음' }, { status: 404 });
+  const owned = await loadOwnedProject(projectId);
+  if ('error' in owned) return owned.error;
+  const project = owned.project;
 
   const page = project.layout.pages.find((p) => p.sceneNumber === sceneNumber);
   if (!page) return NextResponse.json({ error: `페이지 ${sceneNumber} 없음` }, { status: 404 });

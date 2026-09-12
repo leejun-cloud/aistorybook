@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { loadProject, saveProject } from '../../../../lib/store';
+import { saveProject } from '../../../../lib/store';
+import { loadOwnedProject } from '../../../../lib/auth/require';
 import { generateSceneDraft, type ProjectWithSceneJobs } from '../../../../lib/ai/scene';
 
 export const maxDuration = 120;
@@ -13,8 +14,9 @@ export async function POST(req: NextRequest) {
   if (!projectId || typeof sceneNumber !== 'number') {
     return NextResponse.json({ error: 'projectId, sceneNumber가 필요합니다' }, { status: 400 });
   }
-  const project = (await loadProject(projectId)) as ProjectWithSceneJobs | null;
-  if (!project) return NextResponse.json({ error: 'project 없음' }, { status: 404 });
+  const owned = await loadOwnedProject(projectId);
+  if ('error' in owned) return owned.error;
+  const project = owned.project as ProjectWithSceneJobs;
 
   const scene = project.story.scenes.find((s) => s.sceneNumber === sceneNumber);
   if (!scene) return NextResponse.json({ error: `장면 ${sceneNumber} 없음` }, { status: 404 });

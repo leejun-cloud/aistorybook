@@ -38,6 +38,11 @@ export function CreditPackList({ returnTo }: { returnTo?: string }) {
         body: JSON.stringify({ packId }),
       });
       const order = await res.json();
+      if (res.status === 401) {
+        setError('이용권은 계정별로 관리됩니다. 오른쪽 위에서 로그인해 주세요.');
+        setBusy(null);
+        return;
+      }
       if (!res.ok) throw new Error(order.error ?? '주문 생성에 실패했습니다');
 
       const { loadTossPayments } = await import('@tosspayments/payment-sdk');

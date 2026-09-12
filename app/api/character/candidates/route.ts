@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { loadProject, saveProject } from '../../../../lib/store';
+import { saveProject } from '../../../../lib/store';
+import { loadOwnedProject } from '../../../../lib/auth/require';
 import { Character } from '../../../../lib/types';
 import {
   generateCharacterCandidates,
@@ -18,8 +19,9 @@ export async function POST(req: NextRequest) {
   if (!projectId || !description) {
     return NextResponse.json({ error: 'projectId, description이 필요합니다' }, { status: 400 });
   }
-  const project = await loadProject(projectId);
-  if (!project) return NextResponse.json({ error: 'project 없음' }, { status: 404 });
+  const owned = await loadOwnedProject(projectId);
+  if ('error' in owned) return owned.error;
+  const project = owned.project;
 
   // 스타일이 업로드 기반이면 참고 그림을 스타일 컨디셔닝 레퍼런스로 전달
   const style = project.character.style;

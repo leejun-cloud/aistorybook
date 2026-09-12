@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { loadProject } from '../../../../lib/store';
+
+import { loadOwnedProject } from '../../../../lib/auth/require';
 import { buildPublishPackage } from '../../../../lib/publish/package';
 
 export const maxDuration = 300;
@@ -11,8 +12,9 @@ export async function GET(req: NextRequest) {
   const projectId = req.nextUrl.searchParams.get('projectId');
   if (!projectId) return NextResponse.json({ error: 'projectId가 필요합니다' }, { status: 400 });
 
-  const project = await loadProject(projectId);
-  if (!project) return NextResponse.json({ error: 'project 없음' }, { status: 404 });
+  const owned = await loadOwnedProject(projectId);
+  if ('error' in owned) return owned.error;
+  const project = owned.project;
 
   if (!project.publish.unlockedAt) {
     return NextResponse.json({ error: '이용권으로 잠금을 먼저 해제해 주세요' }, { status: 402 });

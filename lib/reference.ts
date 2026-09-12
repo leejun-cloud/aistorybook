@@ -15,6 +15,8 @@ import { listStoredDirs, readStoredFile, writeStoredFile } from './storage';
 export interface StyleReference {
   id: string;
   name: string;
+  /** 저장한 사람의 로그인 uid. 없으면 로그인 도입 전 데이터 — 운영자에게만 보인다. */
+  ownerUid?: string;
   createdAt: string;
   sourceProjectId: string;
   sourceProjectTitle: string;
@@ -33,11 +35,18 @@ export interface StyleReference {
 const referencePath = (id: string, name: string) => `references/${path.basename(id)}/${path.basename(name)}`;
 const referenceFile = (id: string) => referencePath(id, 'reference.json');
 
-export async function listReferences(): Promise<StyleReference[]> {
+/** 레퍼런스에는 그 사람 책의 그림이 앵커로 들어 있다 — 소유자에게만 보여준다. */
+export function canAccessReference(ref: StyleReference, viewerUid: string | null, master = false): boolean {
+  if (!ref.ownerUid) return master;
+  return ref.ownerUid === viewerUid;
+}
+
+export async function listReferences(viewerUid: string | null, master = false): Promise<StyleReference[]> {
   const ids = await listStoredDirs('references');
   const refs = await Promise.all(ids.map((id) => loadReference(id)));
   return refs
     .filter((r): r is StyleReference => r !== null)
+    .filter((r) => canAccessReference(r, viewerUid, master))
     .sort((a, b) => b.createdAt.localeCompare(a.createdAt));
 }
 
@@ -75,7 +84,7 @@ function pickAnchorUrls(project: Project): string[] {
  * 완성(진행) 중인 프로젝트를 스타일 레퍼런스로 저장한다.
  * 실패 사유가 있으면 문자열 반환, 성공이면 StyleReference.
  */
-export async function saveReferenceFromProject(project: Project, name?: string): Promise<StyleReference | string> {
+export async function saveReferenceFromProject(project: Project, name?: string, ownerUid?: string): Promise<StyleReference | string> {
   const anchors = pickAnchorUrls(project);
   if (anchors.length === 0) return '확정된 그림이 없어 레퍼런스로 저장할 수 없습니다 (파트 3에서 그림을 확정하세요)';
   if (!project.character.style.description) return '스타일 서술이 없습니다 (파트 2에서 스타일을 정하세요)';
@@ -95,6 +104,7 @@ export async function saveReferenceFromProject(project: Project, name?: string):
 
   const reference: StyleReference = {
     id,
+    ownerUid,
     name: name?.trim() || `${project.title} 스타일`,
     createdAt: new Date().toISOString(),
     sourceProjectId: project.id,

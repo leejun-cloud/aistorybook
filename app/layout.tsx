@@ -1,6 +1,7 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
 import './globals.css';
+import { AuthButton } from '../components/AuthButton';
 
 export const metadata: Metadata = {
   title: 'AI 동화제작 — 아이디어에서 인쇄 가능한 그림책까지',
@@ -47,6 +48,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
                 {item.label}
               </Link>
             ))}
+            <span className="ml-2"><AuthButton /></span>
           </nav>
         </header>
         <div className="flex flex-1 flex-col overflow-hidden">{children}</div>

@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { loadProject, saveProject } from '../../../lib/store';
+import { saveProject } from '../../../lib/store';
+import { loadOwnedProject } from '../../../lib/auth/require';
 import { runPreflight } from '../../../lib/preflight';
 
 export const maxDuration = 300;
@@ -10,8 +11,9 @@ export const maxDuration = 300;
 export async function POST(req: NextRequest) {
   const { projectId, profileId } = await req.json().catch(() => ({}));
   if (!projectId) return NextResponse.json({ error: 'projectId가 필요합니다' }, { status: 400 });
-  const project = await loadProject(projectId);
-  if (!project) return NextResponse.json({ error: 'project 없음' }, { status: 404 });
+  const owned = await loadOwnedProject(projectId);
+  if ('error' in owned) return owned.error;
+  const project = owned.project;
 
   try {
     const result = await runPreflight(project, { profileId });

@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { loadProject, saveProject } from '../../../../lib/store';
+import { saveProject } from '../../../../lib/store';
+import { loadOwnedProject } from '../../../../lib/auth/require';
 import {
   BRAINSTORM_GREETING,
   brainstormReply,
@@ -22,8 +23,9 @@ export async function POST(req: NextRequest) {
   if (!projectId || !action) {
     return NextResponse.json({ error: 'projectId, action이 필요합니다' }, { status: 400 });
   }
-  const project = await loadProject(projectId);
-  if (!project) return NextResponse.json({ error: 'project 없음' }, { status: 404 });
+  const owned = await loadOwnedProject(projectId);
+  if ('error' in owned) return owned.error;
+  const project = owned.project;
 
   const bs = (project.story.brainstorm ??= { messages: [] });
 

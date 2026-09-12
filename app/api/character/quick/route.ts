@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { loadProject, saveProject } from '../../../../lib/store';
+import { saveProject } from '../../../../lib/store';
+import { loadOwnedProject } from '../../../../lib/auth/require';
 import {
   generateCharacterOne,
   buildCharacterDNA,
@@ -18,8 +19,9 @@ export async function POST(req: NextRequest) {
   if (!projectId || !characterId) {
     return NextResponse.json({ error: 'projectId, characterId가 필요합니다' }, { status: 400 });
   }
-  const project = await loadProject(projectId);
-  if (!project) return NextResponse.json({ error: 'project 없음' }, { status: 404 });
+  const owned = await loadOwnedProject(projectId);
+  if ('error' in owned) return owned.error;
+  const project = owned.project;
   const character = project.character.characters.find((c) => c.id === characterId);
   if (!character) return NextResponse.json({ error: 'character 없음' }, { status: 404 });
 

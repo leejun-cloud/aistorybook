@@ -1,6 +1,7 @@
 import path from 'path';
 import { NextRequest, NextResponse } from 'next/server';
-import { loadProject, saveProject } from '../../../../lib/store';
+import { saveProject } from '../../../../lib/store';
+import { loadOwnedProject } from '../../../../lib/auth/require';
 import { renderBookPdfs } from '../../../../lib/render/pdf';
 import { ensurePrintAssets } from '../../../../lib/render/upscale';
 import { readStoredFile, storedFileExists } from '../../../../lib/storage';
@@ -14,8 +15,9 @@ export const maxDuration = 300;
 export async function POST(req: NextRequest) {
   const { projectId, sceneNumbers } = await req.json().catch(() => ({}));
   if (!projectId) return NextResponse.json({ error: 'projectId가 필요합니다' }, { status: 400 });
-  const project = await loadProject(projectId);
-  if (!project) return NextResponse.json({ error: 'project 없음' }, { status: 404 });
+  const owned1 = await loadOwnedProject(projectId);
+  if ('error' in owned1) return owned1.error;
+  const project = owned1.project;
 
   try {
     // 인쇄 품질 보장: 렌더 전에 확정 이미지 전부의 300dpi 변형본을 생성 (print 렌더가 사용)
@@ -51,8 +53,9 @@ export async function GET(req: NextRequest) {
   if (kind === 'view' || kind === 'print') {
     // 인쇄용만 잠금 — 열람용 미리보기는 결제 전에도 열린다
     if (kind === 'print') {
-      const project = await loadProject(projectId);
-      if (!project) return NextResponse.json({ error: 'project 없음' }, { status: 404 });
+      const owned2 = await loadOwnedProject(projectId);
+      if ('error' in owned2) return owned2.error;
+      const project = owned2.project;
       if (!isUnlocked(project)) return NextResponse.json({ error: LOCKED_MESSAGE }, { status: 402 });
     }
     const buf = await readStoredFile(keys[kind]);

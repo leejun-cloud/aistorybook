@@ -54,6 +54,7 @@ export function UnlockPanel({ projectId, projectTitle, unlockedAt, onUnlocked }:
         body: JSON.stringify({ projectId }),
       });
       const d = await res.json();
+      if (res.status === 401) throw new Error('이용권은 계정별로 관리됩니다. 오른쪽 위에서 로그인해 주세요.');
       if (!res.ok) throw new Error(d.error ?? '잠금 해제에 실패했습니다');
       setCredits(d.credits ?? 0);
       onUnlocked(d.unlockedAt);
@@ -79,6 +80,11 @@ export function UnlockPanel({ projectId, projectTitle, unlockedAt, onUnlocked }:
         body: JSON.stringify({ packId }),
       });
       const order = await res.json();
+      if (res.status === 401) {
+        setError('이용권은 계정별로 관리됩니다. 오른쪽 위에서 로그인해 주세요.');
+        setBusy(null);
+        return;
+      }
       if (!res.ok) throw new Error(order.error ?? '주문 생성에 실패했습니다');
 
       const { loadTossPayments } = await import('@tosspayments/payment-sdk');

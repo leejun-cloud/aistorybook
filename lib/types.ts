@@ -289,6 +289,9 @@ export type ProjectPartKey = 'story' | 'character' | 'layout' | 'publish';
 export interface Project {
   id: string;
   title: string;
+  /** 만든 사람의 로그인 uid. 값이 없으면 로그인 도입 전에 만들어진 프로젝트라
+   *  운영자(MASTER_EMAIL)에게만 보인다. */
+  ownerUid?: string;
   createdAt: string;
   updatedAt: string;
   story: StoryPart;

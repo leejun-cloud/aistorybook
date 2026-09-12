@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { loadProject, saveProject } from '../../../../lib/store';
+import { saveProject } from '../../../../lib/store';
+import { loadOwnedProject } from '../../../../lib/auth/require';
 import { readCharacterAsset, refineCharacter, saveCharacterAsset } from '../../../../lib/ai/character';
 
 export const maxDuration = 300;
@@ -16,8 +17,9 @@ export async function POST(req: NextRequest) {
       { status: 400 },
     );
   }
-  const project = await loadProject(projectId);
-  if (!project) return NextResponse.json({ error: 'project 없음' }, { status: 404 });
+  const owned = await loadOwnedProject(projectId);
+  if ('error' in owned) return owned.error;
+  const project = owned.project;
   const character = project.character.characters.find((c) => c.id === characterId);
   if (!character) return NextResponse.json({ error: 'character 없음' }, { status: 404 });
   const base = character.candidates.find((c) => c.id === candidateId);

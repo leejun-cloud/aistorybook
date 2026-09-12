@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { loadProject, saveProject } from '../../../../lib/store';
+import { saveProject } from '../../../../lib/store';
+import { loadOwnedProject } from '../../../../lib/auth/require';
 import { importStoryText, runQualityGate } from '../../../../lib/ai/story';
 import { seedCastCharacters, rebuildLayoutPages } from '../../../../lib/story-apply';
 
@@ -20,8 +21,9 @@ export async function POST(req: NextRequest) {
       { status: 400 },
     );
   }
-  const project = await loadProject(projectId);
-  if (!project) return NextResponse.json({ error: 'project 없음' }, { status: 404 });
+  const owned = await loadOwnedProject(projectId);
+  if ('error' in owned) return owned.error;
+  const project = owned.project;
 
   try {
     const { scenes, cast } = await importStoryText(text, sceneCount);

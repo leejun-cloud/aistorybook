@@ -1,13 +1,14 @@
 // 이용권 보관소 — 프로젝트 파일과 같은 스토리지 계층(로컬 FS / Vercel Blob)에
-// account/entitlements.json 한 파일로 둔다.
+// 계정별로 한 파일씩 둔다.
 //
-// 지금은 로그인이 없어 계정이 하나다. 인증을 붙이면 이 파일 경로에 사용자 id를
-// 끼워 넣으면 된다 (accountFile()만 바꾸면 나머지는 그대로).
+// 모든 함수가 accountKey(로그인 uid)를 받는다. 이게 없으면 잔액이 전체 공유되어
+// A가 결제한 이용권으로 B가 잠금을 풀 수 있다.
 
+import path from 'path';
 import { readStoredFile, writeStoredFile } from './storage';
 import { getPack } from './pricing';
 
-const accountFile = () => 'account/entitlements.json';
+const accountFile = (accountKey: string) => `account/${path.basename(accountKey)}/entitlements.json`;
 
 export type OrderStatus = 'pending' | 'paid' | 'failed';
 
@@ -32,11 +33,18 @@ export interface Entitlements {
   unlockedProjectIds: string[];
 }
 
-const EMPTY: Entitlements = { credits: 0, orders: [], unlockedProjectIds: [] };
+/**
+ * 빈 상태는 매번 새로 만든다. 모듈 레벨 상수를 `{ ...EMPTY }`로 얕게 복사하면
+ * orders·unlockedProjectIds 배열이 모든 계정에 공유되어, 한 계정이 push한 주문이
+ * 다른 계정에서도 보인다 (계정 분리 테스트에서 실제로 잡힌 결함).
+ */
+function emptyEntitlements(): Entitlements {
+  return { credits: 0, orders: [], unlockedProjectIds: [] };
+}
 
-export async function loadEntitlements(): Promise<Entitlements> {
-  const buf = await readStoredFile(accountFile());
-  if (!buf) return { ...EMPTY };
+export async function loadEntitlements(accountKey: string): Promise<Entitlements> {
+  const buf = await readStoredFile(accountFile(accountKey));
+  if (!buf) return emptyEntitlements();
   try {
     const parsed = JSON.parse(buf.toString('utf-8')) as Partial<Entitlements>;
     return {
@@ -45,12 +53,12 @@ export async function loadEntitlements(): Promise<Entitlements> {
       unlockedProjectIds: parsed.unlockedProjectIds ?? [],
     };
   } catch {
-    return { ...EMPTY };
+    return emptyEntitlements();
   }
 }
 
-async function save(e: Entitlements): Promise<void> {
-  await writeStoredFile(accountFile(), JSON.stringify(e, null, 2));
+async function save(accountKey: string, e: Entitlements): Promise<void> {
+  await writeStoredFile(accountFile(accountKey), JSON.stringify(e, null, 2));
 }
 
 /** 주문번호 — Toss 요구사항(6~64자, 영숫자·하이픈) */
@@ -59,10 +67,10 @@ export function newOrderId(packId: string): string {
 }
 
 /** 결제창을 띄우기 전에 주문을 pending으로 먼저 적어 둔다 (승인 단계에서 금액 대조용) */
-export async function createOrder(packId: string): Promise<CreditOrder> {
+export async function createOrder(accountKey: string, packId: string): Promise<CreditOrder> {
   const pack = getPack(packId);
   if (!pack) throw new Error(`알 수 없는 이용권 상품: ${packId}`);
-  const e = await loadEntitlements();
+  const e = await loadEntitlements(accountKey);
   const order: CreditOrder = {
     orderId: newOrderId(packId),
     packId: pack.id,
@@ -72,12 +80,12 @@ export async function createOrder(packId: string): Promise<CreditOrder> {
     createdAt: new Date().toISOString(),
   };
   e.orders.push(order);
-  await save(e);
+  await save(accountKey, e);
   return order;
 }
 
-export async function findOrder(orderId: string): Promise<CreditOrder | undefined> {
-  const e = await loadEntitlements();
+export async function findOrder(accountKey: string, orderId: string): Promise<CreditOrder | undefined> {
+  const e = await loadEntitlements(accountKey);
   return e.orders.find((o) => o.orderId === orderId);
 }
 
@@ -85,8 +93,8 @@ export async function findOrder(orderId: string): Promise<CreditOrder | undefine
  * 결제 승인 성공을 반영해 이용권을 적립한다.
  * 이미 paid인 주문이면 아무것도 하지 않는다 (승인 콜백 중복 호출 방어).
  */
-export async function markOrderPaid(orderId: string, paymentKey: string): Promise<Entitlements> {
-  const e = await loadEntitlements();
+export async function markOrderPaid(accountKey: string, orderId: string, paymentKey: string): Promise<Entitlements> {
+  const e = await loadEntitlements(accountKey);
   const order = e.orders.find((o) => o.orderId === orderId);
   if (!order) throw new Error('주문을 찾을 수 없습니다');
   if (order.status === 'paid') return e;
@@ -94,17 +102,17 @@ export async function markOrderPaid(orderId: string, paymentKey: string): Promis
   order.paidAt = new Date().toISOString();
   order.paymentKey = paymentKey;
   e.credits += order.credits;
-  await save(e);
+  await save(accountKey, e);
   return e;
 }
 
-export async function markOrderFailed(orderId: string, reason: string): Promise<void> {
-  const e = await loadEntitlements();
+export async function markOrderFailed(accountKey: string, orderId: string, reason: string): Promise<void> {
+  const e = await loadEntitlements(accountKey);
   const order = e.orders.find((o) => o.orderId === orderId);
   if (!order || order.status === 'paid') return;
   order.status = 'failed';
   order.error = reason;
-  await save(e);
+  await save(accountKey, e);
 }
 
 export interface ConsumeResult {
@@ -116,8 +124,8 @@ export interface ConsumeResult {
 }
 
 /** 프로젝트 1건 잠금 해제 — 이용권 1건 차감. 잔액이 없으면 ok:false */
-export async function consumeCreditFor(projectId: string): Promise<ConsumeResult> {
-  const e = await loadEntitlements();
+export async function consumeCreditFor(accountKey: string, projectId: string): Promise<ConsumeResult> {
+  const e = await loadEntitlements(accountKey);
   if (e.unlockedProjectIds.includes(projectId)) {
     return { ok: true, alreadyUnlocked: true, remaining: e.credits };
   }
@@ -126,6 +134,6 @@ export async function consumeCreditFor(projectId: string): Promise<ConsumeResult
   }
   e.credits -= 1;
   e.unlockedProjectIds.push(projectId);
-  await save(e);
+  await save(accountKey, e);
   return { ok: true, remaining: e.credits };
 }

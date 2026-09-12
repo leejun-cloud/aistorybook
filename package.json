@@ -11,12 +11,15 @@
     "start": "next start",
     "lint": "next lint",
     "test:spine": "tsx tests/publish/spine.test.ts",
-    "test:e2e": "tsx tests/e2e/golden-run.ts"
+    "test:e2e": "tsx tests/e2e/golden-run.ts",
+    "test:credits": "tsx tests/credits/isolation.test.ts"
   },
   "dependencies": {
     "@myriaddreamin/typst-ts-node-compiler": "^0.7.0",
     "@tosspayments/payment-sdk": "^1.9.3",
     "@vercel/blob": "^2.8.0",
+    "firebase": "^12.19.0",
+    "firebase-admin": "^12.7.0",
     "next": "14.2.35",
     "react": "18.3.1",
     "react-dom": "18.3.1",

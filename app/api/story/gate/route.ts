@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { loadProject, saveProject } from '../../../../lib/store';
+import { saveProject } from '../../../../lib/store';
+import { loadOwnedProject } from '../../../../lib/auth/require';
 import { runQualityGate } from '../../../../lib/ai/story';
 
 // 채점 + self-repair 최대 2회(각 라운드가 채점 재호출 포함)라 오래 걸릴 수 있다.
@@ -13,8 +14,9 @@ export async function POST(req: NextRequest) {
   const { projectId } = (await req.json().catch(() => ({}))) as { projectId?: string };
   if (!projectId) return NextResponse.json({ error: 'projectId 필수' }, { status: 400 });
 
-  const project = await loadProject(projectId);
-  if (!project) return NextResponse.json({ error: 'project 없음' }, { status: 404 });
+  const owned = await loadOwnedProject(projectId);
+  if ('error' in owned) return owned.error;
+  const project = owned.project;
   if (project.story.scenes.length === 0) {
     return NextResponse.json({ error: '장면이 없습니다. 먼저 초안을 생성하세요.' }, { status: 400 });
   }

@@ -9,13 +9,25 @@ import { listStoredDirs, readStoredFile, writeStoredFile } from './storage';
 
 const projectFile = (id: string) => `projects/${path.basename(id)}/project.json`;
 
-export async function listProjects(): Promise<ProjectSummary[]> {
+/**
+ * 로그인한 사용자가 볼 수 있는 프로젝트만 돌려준다.
+ * 소유자 정보가 없는 기존 프로젝트(로그인 도입 전)는 운영자에게만 보인다 —
+ * 아무에게나 보이면 남의 원고가 노출된다.
+ */
+export async function listProjects(viewerUid: string | null, master = false): Promise<ProjectSummary[]> {
   const ids = await listStoredDirs('projects');
   const projects = await Promise.all(ids.map((id) => loadProject(id)));
   return projects
     .filter((p): p is Project => p !== null)
+    .filter((p) => canAccess(p, viewerUid, master))
     .map(toSummary)
     .sort((a, b) => b.updatedAt.localeCompare(a.updatedAt));
+}
+
+/** 이 사용자가 이 프로젝트를 열어도 되는지 */
+export function canAccess(project: Project, viewerUid: string | null, master = false): boolean {
+  if (!project.ownerUid) return master;
+  return project.ownerUid === viewerUid;
 }
 
 export function toSummary(project: Project): ProjectSummary {
@@ -49,12 +61,13 @@ export async function saveProject(project: Project): Promise<void> {
   await writeStoredFile(projectFile(project.id), JSON.stringify(next, null, 2));
 }
 
-export async function createProject(title: string): Promise<Project> {
+export async function createProject(title: string, ownerUid?: string): Promise<Project> {
   const id = `book-${Date.now().toString(36)}`;
   const demo = demoProject();
   const project: Project = {
     ...demo,
     id,
+    ownerUid,
     title: title || '제목 없는 동화책',
     createdAt: new Date().toISOString(),
     updatedAt: new Date().toISOString(),

@@ -1,6 +1,7 @@
 import path from 'path';
 import { NextRequest, NextResponse } from 'next/server';
-import { loadProject, saveProject } from '../../../../lib/store';
+import { saveProject } from '../../../../lib/store';
+import { loadOwnedProject } from '../../../../lib/auth/require';
 import { readStoredFile } from '../../../../lib/storage';
 import { getProfile, getInteriorPaper, type Binding } from '../../../../lib/cover/profiles';
 import { calculateSpine } from '../../../../lib/cover/spine';
@@ -21,8 +22,9 @@ export async function POST(req: NextRequest) {
   if (!projectId || !profileId || !binding || !paperName) {
     return NextResponse.json({ error: 'projectId, profileId, binding, paperName이 필요합니다' }, { status: 400 });
   }
-  const project = await loadProject(projectId);
-  if (!project) return NextResponse.json({ error: 'project 없음' }, { status: 404 });
+  const owned1 = await loadOwnedProject(projectId);
+  if ('error' in owned1) return owned1.error;
+  const project = owned1.project;
 
   const profile = getProfile(profileId);
   if (!profile) return NextResponse.json({ error: `프로파일 없음: ${profileId}` }, { status: 400 });
@@ -90,8 +92,9 @@ export async function POST(req: NextRequest) {
 export async function GET(req: NextRequest) {
   const projectId = req.nextUrl.searchParams.get('projectId');
   if (!projectId) return NextResponse.json({ error: 'projectId가 필요합니다' }, { status: 400 });
-  const project = await loadProject(projectId);
-  if (!project) return NextResponse.json({ error: 'project 없음' }, { status: 404 });
+  const owned2 = await loadOwnedProject(projectId);
+  if ('error' in owned2) return owned2.error;
+  const project = owned2.project;
   if (!isUnlocked(project)) return NextResponse.json({ error: LOCKED_MESSAGE }, { status: 402 });
 
   const buf = await readStoredFile(`projects/${path.basename(projectId)}/output/cover-wrap.pdf`);

@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { loadProject, saveProject } from '../../../../lib/store';
+import { saveProject } from '../../../../lib/store';
+import { loadOwnedProject } from '../../../../lib/auth/require';
 import { generateCoverOptions, type CoverConcept } from '../../../../lib/cover/generate';
 import { recommendCoverDesign } from '../../../../lib/cover/designs';
 
@@ -13,8 +14,9 @@ const CONCEPTS: CoverConcept[] = ['character', 'scene', 'symbol'];
 export async function POST(req: NextRequest) {
   const { projectId, concepts } = await req.json().catch(() => ({}));
   if (!projectId) return NextResponse.json({ error: 'projectId가 필요합니다' }, { status: 400 });
-  const project = await loadProject(projectId);
-  if (!project) return NextResponse.json({ error: 'project 없음' }, { status: 404 });
+  const owned = await loadOwnedProject(projectId);
+  if ('error' in owned) return owned.error;
+  const project = owned.project;
 
   const wanted: CoverConcept[] = Array.isArray(concepts)
     ? concepts.filter((c: string): c is CoverConcept => (CONCEPTS as string[]).includes(c))
