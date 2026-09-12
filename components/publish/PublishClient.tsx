@@ -42,6 +42,11 @@ export function PublishClient() {
 
   if (loading) return <div className="p-8 text-gray-400">불러오는 중…</div>;
 
+  const hasAnyCover = project.publish.coverOptions.some((c) => c.imageUrl);
+  const missingConcepts = (['character', 'scene', 'symbol'] as const).filter(
+    (concept) => !project.publish.coverOptions.find((c) => c.concept === concept)?.imageUrl,
+  );
+
   const call = async (label: string, url: string, body: object) => {
     setBusy(label);
     setMessage(null);
@@ -65,19 +70,26 @@ export function PublishClient() {
     }
   };
 
-  const generateCovers = async () => {
-    const data = await call('표지 생성', '/api/cover/generate', {});
+  // 표지도 다른 파트와 같은 패턴 — 기본은 1장(대표 구도인 "장면")만 빠르게 만들어 바로
+  // 확정하고, 마음에 안 들면 그때 나머지 2방향(캐릭터 중심·상징)을 더 만들어 비교한다.
+  const generateCovers = async (concepts?: ('character' | 'scene' | 'symbol')[]) => {
+    const data = await call('표지 생성', '/api/cover/generate', concepts ? { concepts } : {});
     if (data?.options) {
-      setProject((prev) => ({
-        ...prev,
-        publish: {
-          ...prev.publish,
-          coverOptions: prev.publish.coverOptions.map((o) => {
-            const updated = data.options.find((n: { concept: string }) => n.concept === o.concept);
-            return updated ? { ...o, ...updated } : o;
-          }),
-        },
-      }));
+      setProject((prev) => {
+        const nextOptions = prev.publish.coverOptions.map((o) => {
+          const updated = data.options.find((n: { concept: string }) => n.concept === o.concept);
+          return updated ? { ...o, ...updated } : o;
+        });
+        const firstNew = data.options[0];
+        return {
+          ...prev,
+          publish: {
+            ...prev.publish,
+            coverOptions: nextOptions,
+            selectedCoverId: prev.publish.selectedCoverId ?? firstNew?.id,
+          },
+        };
+      });
       setMessage(`표지 ${data.options.length}방향 생성 완료`);
     }
   };
@@ -162,17 +174,31 @@ export function PublishClient() {
 
         <section className="mb-6">
           <div className="mb-3 flex items-center justify-between">
-            <h1 className="text-lg font-bold">표지 — 3방향 제안</h1>
+            <h1 className="text-lg font-bold">표지</h1>
             <button
-              onClick={generateCovers}
-              disabled={busy !== null || !isPersisted}
+              onClick={() => generateCovers(hasAnyCover ? missingConcepts : ['scene'])}
+              disabled={busy !== null || !isPersisted || (hasAnyCover && missingConcepts.length === 0)}
               className="rounded-lg border border-brand-300 px-3 py-1.5 text-xs font-semibold text-brand-600 hover:bg-brand-50 disabled:opacity-50"
             >
-              {busy === '표지 생성' ? '생성 중… (수십 초)' : '표지 3방향 생성'}
+              {busy === '표지 생성'
+                ? '생성 중…'
+                : !hasAnyCover
+                  ? '표지 빠르게 만들기'
+                  : missingConcepts.length > 0
+                    ? `다른 느낌 ${missingConcepts.length}개 더 보기`
+                    : '3방향 모두 생성됨'}
             </button>
           </div>
-          <div className="grid grid-cols-3 gap-3">
-            {project.publish.coverOptions.map((c) => (
+          <p className="mb-2 text-xs text-gray-400">
+            {!hasAnyCover
+              ? '먼저 대표 구도(장면 중심) 1장을 빠르게 만듭니다. 마음에 안 들면 다른 방향을 더 만들어 비교할 수 있어요.'
+              : '그림은 클릭해서 바로 바꿔 선택할 수 있습니다.'}
+          </p>
+          <div className={hasAnyCover && missingConcepts.length === 2 ? 'grid grid-cols-1 gap-3 max-w-xs' : 'grid grid-cols-3 gap-3'}>
+            {(hasAnyCover && missingConcepts.length === 2
+              ? project.publish.coverOptions.filter((c) => c.imageUrl)
+              : project.publish.coverOptions
+            ).map((c) => (
               <button
                 key={c.id}
                 onClick={() => c.imageUrl && selectCover(c.id)}
