@@ -114,3 +114,21 @@ export const RENDER_TEMPLATES: LayoutTemplate[] = [
 export function getTemplate(id: string): LayoutTemplate {
   return RENDER_TEMPLATES.find((t) => t.id === id) ?? RENDER_TEMPLATES[0];
 }
+
+// 글 영역의 위치·정렬이 서로 다른 템플릿을 한 책 안에서 섞어 쓰면(예: 페이지마다
+// 좌상단→우하단→좌측 칼럼) 책 전체의 통일감이 깨져 보인다. 한 책 안에서는 같은
+// "글자 방향 계열"끼리만 순환하도록 그룹을 나눈다 — recommendLayoutTemplate이 첫
+// 페이지에서 정해진 계열로 이후 페이지 추천을 제한하는 데 쓴다.
+export const TEMPLATE_FAMILIES: Record<string, string[]> = {
+  'bottom-center': ['L01', 'L02', 'L08'],
+  'top-center': ['L05', 'L10'],
+  'side-column': ['L03', 'L04', 'L09'],
+  corner: ['L06', 'L07'],
+};
+
+export function familyOf(templateId: string): string | null {
+  for (const [family, ids] of Object.entries(TEMPLATE_FAMILIES)) {
+    if (ids.includes(templateId)) return family;
+  }
+  return null;
+}

@@ -30,6 +30,7 @@ import {
   type ConsistencyResult,
 } from './consistency';
 import { NO_TEXT_IN_IMAGE_PREFIX, consistencyPrefix, styleClause } from '../prompts/character';
+import { familyOf } from '../render/templates';
 
 // ---------------------------------------------------------------------------
 // 장면별 잡 상태 (storybloom StoryPage.imageStatus/imageRetryCount 축약판)
@@ -528,17 +529,25 @@ export async function recommendLayoutTemplate(
   templates: LayoutTemplate[],
   recentTemplateIds: string[] = [],
 ): Promise<TemplateRecommendation> {
-  const res = await generateVisionText(recommendationPrompt(scene, templates));
+  // 책의 첫 페이지에서 정해진 글자 방향 계열로 이후 페이지를 제한한다 — 책 전체의
+  // 시각적 통일감을 위해 (같은 책 안에서 좌상단·우하단·측면 칼럼이 뒤섞이지 않게).
+  const lockedFamily = recentTemplateIds.length > 0 ? familyOf(recentTemplateIds[0]) : null;
+  const candidates = lockedFamily
+    ? templates.filter((t) => familyOf(t.id) === lockedFamily)
+    : templates;
+  const pool = candidates.length > 0 ? candidates : templates;
+
+  const res = await generateVisionText(recommendationPrompt(scene, pool));
   if (res.ok) {
     const parsed = parseJsonLoose<{ ranked: string[]; reason: string }>(res.text);
     if (parsed && Array.isArray(parsed.ranked) && parsed.ranked.length > 0) {
-      const templateId = avoidTripleRepeat(parsed.ranked, recentTemplateIds, templates);
+      const templateId = avoidTripleRepeat(parsed.ranked, recentTemplateIds, pool);
       return { templateId, rankedIds: parsed.ranked, reason: parsed.reason ?? '', usedFallback: false };
     }
   }
-  const ranked = fallbackRecommend(scene, templates);
+  const ranked = fallbackRecommend(scene, pool);
   return {
-    templateId: avoidTripleRepeat(ranked, recentTemplateIds, templates),
+    templateId: avoidTripleRepeat(ranked, recentTemplateIds, pool),
     rankedIds: ranked.slice(0, 3),
     reason: '휴리스틱 폴백(글자 수·beat 기준)',
     usedFallback: true,

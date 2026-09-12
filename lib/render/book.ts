@@ -142,9 +142,15 @@ function renderTextSlot(
       ${esc(text)}
     ]`;
 
+  // 상자는 슬롯 전체 높이(rect.h)가 아니라 실제 글자 높이에 맞춰 그린다 — 글이 짧은데
+  // 템플릿의 글 영역이 넓으면(예: 3줄 글에 높이 25% 슬롯) 빈 여백만 큰 상자로 남는 문제를
+  // measure()로 실측해 방지한다 (사전검사 글 넘침 실측과 같은 기법).
   let background = '';
   if (overlay && !boxless) {
-    background = `#place(rect(width: 100%, height: 100%, fill: rgb(255,253,248,220), radius: 3mm))\n    `;
+    background = `#context {
+      let h = measure(par(leading: ${(lineHeight - 1).toFixed(2)}em)[#text(size: ${fontSizePt}pt)[${esc(text)}]], width: ${innerW}mm).height
+      place(horizon, rect(width: 100%, height: calc.min(h + ${2 * padY}mm, ${rect.h}mm), fill: rgb(255,253,248,220), radius: 3mm))
+    }\n    `;
   }
 
   // 글로우: 실제 글자 뒤에 종이색 사본을 살짝씩 어긋나게 여러 방향으로 깔아 아웃라인
