@@ -211,6 +211,8 @@ export interface PreflightResult {
   ranAt: string;
   passed: boolean;
   items: PreflightItem[];
+  /** 검수 점수 0~100 — FAIL은 크게, WARN은 작게 감점 (lib/preflight/index.ts scoreItems) */
+  score?: number;
 }
 
 /** 랩 표지 텍스트 편집 설정 (/cover 편집 페이지) — 값이 없으면 wrap.ts 기본값 */
@@ -266,6 +268,16 @@ export interface Project {
   publish: PublishPart;
 }
 
+/** 프로젝트 진행 상태 — 대시보드 카드 배지 */
+export type ProjectStatus = 'draft' | 'in-progress' | 'needs-fix' | 'ready';
+
+export const STATUS_LABELS: Record<ProjectStatus, string> = {
+  draft: '시작 전',
+  'in-progress': '작업 중',
+  'needs-fix': '수정 필요',
+  ready: '인쇄 준비 완료',
+};
+
 /** 대시보드 목록용 요약 */
 export interface ProjectSummary {
   id: string;
@@ -273,6 +285,21 @@ export interface ProjectSummary {
   updatedAt: string;
   approvedParts: ProjectPartKey[];
   currentPart: ProjectPartKey;
+  status: ProjectStatus;
+  /** 장면 수 — 카드에 "N장면" 으로 표기 */
+  sceneCount: number;
+  /** 표지 썸네일 (선택된 표지안이 있으면) */
+  coverUrl?: string;
+  /** 마지막 사전검사 점수 0~100 */
+  auditScore?: number;
+}
+
+export function projectStatus(project: Project): ProjectStatus {
+  if (project.publish.approved) return 'ready';
+  const pf = project.publish.preflight;
+  if (pf && !pf.passed) return 'needs-fix';
+  if (project.story.approved || project.story.scenes.length > 0) return 'in-progress';
+  return 'draft';
 }
 
 export const PART_LABELS: Record<ProjectPartKey, string> = {

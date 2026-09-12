@@ -132,3 +132,9 @@ export function familyOf(templateId: string): string | null {
   }
   return null;
 }
+
+// 계열을 하나로 완전히 고정하면, 그림 구도나 글 길이가 그 계열에 안 맞는 장면(예:
+// "corner" 계열은 글이 짧을 때 전용인데 그 장면만 글이 길 때)에 무리하게 욱여넣게
+// 된다. 계열 고정은 유지하되, 어떤 계열에도 무난하게 섞이는 범용 템플릿 2~3개를
+// 예비 선택지로 항상 같이 둬서 그림/글 사정에 따른 예외를 허용한다.
+export const UNIVERSAL_TEMPLATES = ['L01', 'L02', 'L08'];

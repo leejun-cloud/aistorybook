@@ -30,7 +30,7 @@ import {
   type ConsistencyResult,
 } from './consistency';
 import { NO_TEXT_IN_IMAGE_PREFIX, consistencyPrefix, styleClause } from '../prompts/character';
-import { familyOf } from '../render/templates';
+import { familyOf, UNIVERSAL_TEMPLATES } from '../render/templates';
 
 // ---------------------------------------------------------------------------
 // 장면별 잡 상태 (storybloom StoryPage.imageStatus/imageRetryCount 축약판)
@@ -529,11 +529,12 @@ export async function recommendLayoutTemplate(
   templates: LayoutTemplate[],
   recentTemplateIds: string[] = [],
 ): Promise<TemplateRecommendation> {
-  // 책의 첫 페이지에서 정해진 글자 방향 계열로 이후 페이지를 제한한다 — 책 전체의
-  // 시각적 통일감을 위해 (같은 책 안에서 좌상단·우하단·측면 칼럼이 뒤섞이지 않게).
+  // 책의 첫 페이지에서 정해진 글자 방향 계열을 메인으로 삼되, 완전히 고정하지는
+  // 않는다 — 그림 구도·글 길이가 메인 계열에 안 맞는 장면도 있어 무난하게 섞이는
+  // 범용 템플릿 2~3개(UNIVERSAL_TEMPLATES)를 항상 예비 선택지로 함께 둔다.
   const lockedFamily = recentTemplateIds.length > 0 ? familyOf(recentTemplateIds[0]) : null;
   const candidates = lockedFamily
-    ? templates.filter((t) => familyOf(t.id) === lockedFamily)
+    ? templates.filter((t) => familyOf(t.id) === lockedFamily || UNIVERSAL_TEMPLATES.includes(t.id))
     : templates;
   const pool = candidates.length > 0 ? candidates : templates;
 
