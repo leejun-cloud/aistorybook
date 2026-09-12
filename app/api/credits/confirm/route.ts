@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { findOrder, markOrderFailed, markOrderPaid } from '../../../../lib/credits';
+import { tossSecretKey } from '../../../../lib/payments/config';
 
 // POST /api/credits/confirm  body: { paymentKey, orderId, amount }
 // 결제창 성공 리다이렉트 후 호출. Toss 승인 API를 서버에서 호출해 실제 결제를
@@ -23,7 +24,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: '결제 금액이 주문과 다릅니다' }, { status: 400 });
   }
 
-  const secret = process.env.TOSS_SECRET_KEY;
+  const secret = tossSecretKey();
   if (!secret) return NextResponse.json({ error: '결제 모듈 미설정' }, { status: 503 });
 
   const auth = Buffer.from(`${secret}:`).toString('base64');
