@@ -4,6 +4,7 @@ import { loadProject, saveProject } from '../../../../lib/store';
 import { renderBookPdfs } from '../../../../lib/render/pdf';
 import { ensurePrintAssets } from '../../../../lib/render/upscale';
 import { readStoredFile, storedFileExists } from '../../../../lib/storage';
+import { isUnlocked, LOCKED_MESSAGE } from '../../../../lib/publish/gate';
 
 export const maxDuration = 300;
 
@@ -48,6 +49,12 @@ export async function GET(req: NextRequest) {
   };
 
   if (kind === 'view' || kind === 'print') {
+    // 인쇄용만 잠금 — 열람용 미리보기는 결제 전에도 열린다
+    if (kind === 'print') {
+      const project = await loadProject(projectId);
+      if (!project) return NextResponse.json({ error: 'project 없음' }, { status: 404 });
+      if (!isUnlocked(project)) return NextResponse.json({ error: LOCKED_MESSAGE }, { status: 402 });
+    }
     const buf = await readStoredFile(keys[kind]);
     if (!buf) return NextResponse.json({ error: 'PDF 없음 — 먼저 POST로 렌더하세요' }, { status: 404 });
     return new NextResponse(new Uint8Array(buf), {

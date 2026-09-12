@@ -6,6 +6,7 @@ import { getProfile, getInteriorPaper, type Binding } from '../../../../lib/cove
 import { calculateSpine } from '../../../../lib/cover/spine';
 import { renderWrapCoverPdf } from '../../../../lib/cover/wrap';
 import { ensurePrintVariant } from '../../../../lib/render/upscale';
+import { isUnlocked, LOCKED_MESSAGE } from '../../../../lib/publish/gate';
 
 export const maxDuration = 300;
 
@@ -89,6 +90,10 @@ export async function POST(req: NextRequest) {
 export async function GET(req: NextRequest) {
   const projectId = req.nextUrl.searchParams.get('projectId');
   if (!projectId) return NextResponse.json({ error: 'projectId가 필요합니다' }, { status: 400 });
+  const project = await loadProject(projectId);
+  if (!project) return NextResponse.json({ error: 'project 없음' }, { status: 404 });
+  if (!isUnlocked(project)) return NextResponse.json({ error: LOCKED_MESSAGE }, { status: 402 });
+
   const buf = await readStoredFile(`projects/${path.basename(projectId)}/output/cover-wrap.pdf`);
   if (!buf) return NextResponse.json({ error: 'PDF 없음 — 먼저 POST로 렌더하세요' }, { status: 404 });
   return new NextResponse(new Uint8Array(buf), {
