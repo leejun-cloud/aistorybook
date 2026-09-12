@@ -40,7 +40,7 @@ export function SaveReferenceButton({ projectId, projectTitle }: { projectId: st
         onClick={handleSave}
         disabled={state !== 'idle'}
         title="이 책의 화풍·분위기·조판을 참조자료로 저장 — 새 책에서 스토리·인물만 바꿔 재사용"
-        className="rounded-full border border-gray-200 px-3 py-1 text-xs text-gray-500 hover:border-brand-300 hover:text-brand-600 disabled:opacity-60"
+        className="rounded-full border border-gray-200 px-3 py-1 text-xs text-gray-500 hover:border-sunset-400 hover:text-sunset-600 disabled:opacity-60"
       >
         {state === 'done' ? '레퍼런스 저장됨 ✓' : state === 'saving' ? '저장 중…' : '레퍼런스로 저장'}
       </button>

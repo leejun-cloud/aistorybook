@@ -246,5 +246,19 @@ export async function runPreflight(project: Project, opts: PreflightOptions = {}
     ranAt: new Date().toISOString(),
     passed: items.every((i) => i.passed),
     items,
+    score: scoreItems(items),
   };
+}
+
+/**
+ * 검수 점수 0~100. FAIL 항목은 -20, WARN(통과했지만 detail이 "WARN:"으로 시작)은 -5.
+ * 대시보드 카드와 인쇄 단계에서 "검수 N점"으로 노출된다.
+ */
+export function scoreItems(items: PreflightItem[]): number {
+  let score = 100;
+  for (const item of items) {
+    if (!item.passed) score -= 20;
+    else if (item.detail?.startsWith('WARN')) score -= 5;
+  }
+  return Math.max(0, score);
 }

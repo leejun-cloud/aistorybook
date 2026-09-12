@@ -211,6 +211,8 @@ export interface PreflightResult {
   ranAt: string;
   passed: boolean;
   items: PreflightItem[];
+  /** 검수 점수 0~100 — FAIL은 크게, WARN은 작게 감점 (lib/preflight/index.ts scoreItems) */
+  score?: number;
 }
 
 /** 랩 표지 텍스트 편집 설정 (/cover 편집 페이지) — 값이 없으면 wrap.ts 기본값 */
@@ -228,6 +230,10 @@ export interface CoverTextLayout {
   titleYPct?: number;
   titleSizePt?: number;
   titleColor?: string;
+  /** ISBN 13자리 (하이픈 허용) — 뒷표지 우하단 EAN-13 바코드로 인쇄 */
+  isbn?: string;
+  /** ISBN 바코드 인쇄 여부 (기본: isbn이 유효하면 true) */
+  showBarcode?: boolean;
   /** 작가명 세로 위치 — % (기본 88) */
   authorYPct?: number;
   authorSizePt?: number;
@@ -239,6 +245,10 @@ export interface PublishPart {
   /** 랩 표지 텍스트·위치 편집 결과 */
   coverLayout?: CoverTextLayout;
   preflight?: PreflightResult;
+  /** 유통용 서지 정보 (최종 출판 패키지 단계) */
+  meta?: PublishMeta;
+  /** 이용권으로 잠금 해제된 시각 — 없으면 PDF·패키지 다운로드 잠금 */
+  unlockedAt?: string;
   outputs: {
     viewingPdfUrl?: string;
     printBodyPdfUrl?: string;
@@ -247,6 +257,27 @@ export interface PublishPart {
     pagePngUrls?: string[];
   };
   approved: boolean;
+}
+
+/** 유통 플랫폼 — 최종 패키지에 어디로 올릴지 표시 */
+export const DISTRIBUTION_PLATFORMS = [
+  '교보문고',
+  '알라딘',
+  'YES24',
+  '리디',
+  '밀리의 서재',
+  '부크크',
+] as const;
+
+export interface PublishMeta {
+  isbn?: string;
+  author?: string;
+  publisher?: string;
+  /** 책 소개문 (뒷표지·서점 상세 공용) */
+  blurb?: string;
+  /** 대상 독자 연령 표기 (기본: story.targetAge) */
+  readerAge?: string;
+  platforms?: string[];
 }
 
 // ---------------------------------------------------------------------------
@@ -266,6 +297,16 @@ export interface Project {
   publish: PublishPart;
 }
 
+/** 프로젝트 진행 상태 — 대시보드 카드 배지 */
+export type ProjectStatus = 'draft' | 'in-progress' | 'needs-fix' | 'ready';
+
+export const STATUS_LABELS: Record<ProjectStatus, string> = {
+  draft: '시작 전',
+  'in-progress': '작업 중',
+  'needs-fix': '수정 필요',
+  ready: '인쇄 준비 완료',
+};
+
 /** 대시보드 목록용 요약 */
 export interface ProjectSummary {
   id: string;
@@ -273,6 +314,23 @@ export interface ProjectSummary {
   updatedAt: string;
   approvedParts: ProjectPartKey[];
   currentPart: ProjectPartKey;
+  status: ProjectStatus;
+  /** 장면 수 — 카드에 "N장면" 으로 표기 */
+  sceneCount: number;
+  /** 표지 썸네일 (선택된 표지안이 있으면) */
+  coverUrl?: string;
+  /** 마지막 사전검사 점수 0~100 */
+  auditScore?: number;
+  /** 이용권으로 잠금 해제된 시각 — 없으면 다운로드 잠금 */
+  unlockedAt?: string;
+}
+
+export function projectStatus(project: Project): ProjectStatus {
+  if (project.publish.approved) return 'ready';
+  const pf = project.publish.preflight;
+  if (pf && !pf.passed) return 'needs-fix';
+  if (project.story.approved || project.story.scenes.length > 0) return 'in-progress';
+  return 'draft';
 }
 
 export const PART_LABELS: Record<ProjectPartKey, string> = {

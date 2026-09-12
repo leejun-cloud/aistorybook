@@ -47,7 +47,7 @@ export function NewProjectButton() {
     <div className="relative">
       <button
         onClick={() => setOpen((v) => !v)}
-        className="rounded-lg bg-brand-500 px-4 py-2 text-sm font-semibold text-white hover:bg-brand-600"
+        className="rounded-full bg-ink-800 px-4 py-2 text-sm font-semibold text-paper-50 hover:bg-ink-600"
       >
         + 새 책 만들기
       </button>
@@ -101,7 +101,7 @@ export function NewProjectButton() {
           <button
             onClick={handleCreate}
             disabled={creating}
-            className="mt-3 w-full rounded-lg bg-brand-500 py-2 text-sm font-semibold text-white hover:bg-brand-600 disabled:opacity-60"
+            className="mt-3 w-full rounded-full bg-ink-800 py-2 text-sm font-semibold text-paper-50 hover:bg-ink-600 disabled:opacity-60"
           >
             {creating ? '만드는 중…' : '만들기'}
           </button>

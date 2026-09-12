@@ -3,7 +3,7 @@
 // 실제 파일 I/O는 lib/storage.ts가 담당 — 로컬은 파일시스템, Vercel 배포는 Blob.
 
 import path from 'path';
-import { Project, ProjectSummary, currentPart, PART_ORDER, partApproved } from './types';
+import { Project, ProjectSummary, currentPart, PART_ORDER, partApproved, projectStatus } from './types';
 import { demoProject } from './demo';
 import { listStoredDirs, readStoredFile, writeStoredFile } from './storage';
 
@@ -19,12 +19,18 @@ export async function listProjects(): Promise<ProjectSummary[]> {
 }
 
 export function toSummary(project: Project): ProjectSummary {
+  const selected = project.publish.coverOptions.find((c) => c.id === project.publish.selectedCoverId);
   return {
     id: project.id,
     title: project.title,
     updatedAt: project.updatedAt,
     approvedParts: PART_ORDER.filter((p) => partApproved(project, p)),
     currentPart: currentPart(project),
+    status: projectStatus(project),
+    sceneCount: project.story.scenes.length,
+    coverUrl: selected?.imageUrl,
+    auditScore: project.publish.preflight?.score,
+    unlockedAt: project.publish.unlockedAt,
   };
 }
 
