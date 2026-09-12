@@ -2,17 +2,11 @@
 @tailwind components;
 @tailwind utilities;
 
-:root {
-  --font-sans: 'Noto Sans KR';
-  --font-serif: 'Noto Serif KR';
-  --font-display: 'Gowun Dodum';
-}
-
 html, body {
   height: 100%;
 }
 
 body {
-  color: #2b271f;
-  background: #fdfbf7;
+  color: #1f2430;
+  background: #f7f8fb;
 }
